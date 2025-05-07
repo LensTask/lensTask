@@ -1,0 +1,19 @@
+{
+  "name": "@lin/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "test": "pnpm exec hardhat test",
+    "deploy": "hardhat run scripts/deploy.ts --network lensTestnet",
+    "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost" 
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.3.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "@types/node": "^22.15.15",
+    "dotenv": "^16.5.0",
+    "typescript": "^5.3.3"
+  }
+}

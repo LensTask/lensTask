@@ -1,0 +1,10 @@
+{
+  "name": "@lin/indexer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "viem": "^1.10.0",
+    "dotenv": "^16.3.1"
+  }
+}
