@@ -3,6 +3,7 @@ import {
   production,
   development,
 } from '@lens-protocol/client';
+// No import needed from @lens-protocol/storage
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 

@@ -2,27 +2,31 @@ import { NextPage } from "next";
 import { useQuery } from "@tanstack/react-query";
 import { lensClient } from "@/lib/lensClient";
 import QuestionCard from "@/components/QuestionCard";
-// Import types including LimitType and PublicationType for V1.3.1 style if needed
+// Import types needed for fetchAll and QuestionCard
 import { PublicationFragment, LimitType, PublicationType } from '@lens-protocol/client';
 
 const Home: NextPage = () => {
   const { data, error, isLoading } = useQuery({
-    queryKey: ["latestPublications"], // Use a descriptive query key
+    queryKey: ["latestPublications"], // Descriptive query key
     queryFn: async () => {
-      console.log("Fetching publications for QuestionCards...");
+      console.log("Fetching latest publications for QuestionCards...");
       try {
-        // Use the fetchAll call that worked previously
+        // Use publication.fetchAll with V2 style parameters
         const result = await lensClient.publication.fetchAll({
-          limit: LimitType.Ten, // Or use number 10 if LimitType causes issues with 1.3.1 build
+          limit: LimitType.Twenty, // Fetch more posts, e.g., 20
           where: {
-            publicationTypes: [PublicationType.Post], // Filter by Post type
+            publicationTypes: [PublicationType.Post], // Ensure fetching Posts
+            // Add more filters if needed, e.g., metadata filter for your app ID
+            // metadata: { tags: { oneOf: ["lin-question"] } } // Example filter
           }
         });
         console.log("Fetched publications for cards:", result.items);
         return result;
-      } catch (fetchError) {
+      } catch (fetchError: any) {
         console.error("Error fetching publications for cards:", fetchError);
-        throw fetchError; // Re-throw error for react-query
+        // Extract GraphQL errors if available for better debugging
+        const errorMessage = fetchError.response?.errors?.[0]?.message || fetchError.message;
+        throw new Error(errorMessage); // Re-throw with specific message
       }
     }
   });
@@ -33,14 +37,16 @@ const Home: NextPage = () => {
 
       {isLoading && <p>Loading questions...</p>}
 
-      {error && <p>Error loading questions: {error.message}</p>}
+      {error && <p className="text-red-500">Error loading questions: {error.message}</p>}
 
-      {data?.items && data.items.length === 0 && !isLoading && <p>No questions found.</p>}
+      {data?.items && data.items.length === 0 && !isLoading && (
+        <p className="text-gray-500">No questions found matching the criteria.</p>
+      )}
 
-      {/* Map over fetched items and render QuestionCard for each */}
+      {/* Map over fetched items and render QuestionCard */}
       {data?.items.map((p) => (
-         // Key needs to be unique, p.id is standard
-         // Pass the full publication object as 'pub' prop
+         // Ensure QuestionCard uses the correct prop 'pub'
+         // and PublicationFragment type
         <QuestionCard key={p.id} pub={p as PublicationFragment} />
       ))}
     </main>
