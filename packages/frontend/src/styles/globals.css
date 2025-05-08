@@ -11,3 +11,11 @@
 .btn-primary {
   @apply bg-purple-600 hover:bg-purple-700;
 }
+
+
+@layer base {
+  body {
+    @apply bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200;
+    /* This provides a default background for the entire page */
+  }
+}
