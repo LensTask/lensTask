@@ -10,8 +10,8 @@ contract MockERC20 is ERC20, Ownable {
         string memory symbol,
         uint8 decimals_
     ) ERC20(name, symbol) Ownable(msg.sender) {
-        // Decimals are fixed at 18 in OZ v5 ERC20 unless overridden in a derived contract.
-        // The decimals_ parameter is kept for test compatibility but not used to set ERC20 state here.
+        // OZ v5 ERC20 decimals are fixed at 18 by default.
+        // The decimals_ param is kept for test compatibility.
     }
 
     function mint(address to, uint256 amount) public onlyOwner {

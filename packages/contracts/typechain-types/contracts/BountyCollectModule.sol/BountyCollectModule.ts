@@ -62,7 +62,6 @@ export declare namespace Types {
 export interface BountyCollectModuleInterface extends Interface {
   getFunction(
     nameOrSignature:
-      | "HUB"
       | "acceptedAnswerNFT"
       | "initializePublicationAction"
       | "owner"
@@ -73,7 +72,6 @@ export interface BountyCollectModuleInterface extends Interface {
     nameOrSignatureOrTopic: "BountyInitialized" | "BountyPaid"
   ): EventFragment;
 
-  encodeFunctionData(functionFragment: "HUB", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "acceptedAnswerNFT",
     values?: undefined
@@ -88,7 +86,6 @@ export interface BountyCollectModuleInterface extends Interface {
     values: [Types.ProcessActionParamsStruct]
   ): string;
 
-  decodeFunctionResult(functionFragment: "HUB", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "acceptedAnswerNFT",
     data: BytesLike
@@ -200,8 +197,6 @@ export interface BountyCollectModule extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
-  HUB: TypedContractMethod<[], [string], "view">;
-
   acceptedAnswerNFT: TypedContractMethod<[], [string], "view">;
 
   initializePublicationAction: TypedContractMethod<
@@ -227,9 +222,6 @@ export interface BountyCollectModule extends BaseContract {
     key: string | FunctionFragment
   ): T;
 
-  getFunction(
-    nameOrSignature: "HUB"
-  ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "acceptedAnswerNFT"
   ): TypedContractMethod<[], [string], "view">;
