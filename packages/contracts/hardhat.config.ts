@@ -13,7 +13,7 @@ const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.23",
     settings: {
-      // Remappings section REMOVED
+      // Remappings section entirely removed
       optimizer: {
          enabled: true,
          runs: 200,

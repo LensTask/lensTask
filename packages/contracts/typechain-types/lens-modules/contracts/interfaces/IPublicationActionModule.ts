@@ -8,7 +8,6 @@ import type {
   FunctionFragment,
   Result,
   Interface,
-  EventFragment,
   AddressLike,
   ContractRunner,
   ContractMethod,
@@ -18,10 +17,9 @@ import type {
   TypedContractEvent,
   TypedDeferredTopicFilter,
   TypedEventLog,
-  TypedLogDescription,
   TypedListener,
   TypedContractMethod,
-} from "../../common";
+} from "../../../common";
 
 export declare namespace Types {
   export type ProcessActionParamsStruct = {
@@ -59,109 +57,35 @@ export declare namespace Types {
   };
 }
 
-export interface BountyCollectModuleInterface extends Interface {
+export interface IPublicationActionModuleInterface extends Interface {
   getFunction(
-    nameOrSignature:
-      | "HUB"
-      | "acceptedAnswerNFT"
-      | "initializePublicationAction"
-      | "owner"
-      | "processPublicationAction"
+    nameOrSignature: "initializePublicationAction" | "processPublicationAction"
   ): FunctionFragment;
 
-  getEvent(
-    nameOrSignatureOrTopic: "BountyInitialized" | "BountyPaid"
-  ): EventFragment;
-
-  encodeFunctionData(functionFragment: "HUB", values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: "acceptedAnswerNFT",
-    values?: undefined
-  ): string;
   encodeFunctionData(
     functionFragment: "initializePublicationAction",
     values: [BigNumberish, BigNumberish, AddressLike, BytesLike]
   ): string;
-  encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "processPublicationAction",
     values: [Types.ProcessActionParamsStruct]
   ): string;
 
-  decodeFunctionResult(functionFragment: "HUB", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "acceptedAnswerNFT",
-    data: BytesLike
-  ): Result;
   decodeFunctionResult(
     functionFragment: "initializePublicationAction",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "processPublicationAction",
     data: BytesLike
   ): Result;
 }
 
-export namespace BountyInitializedEvent {
-  export type InputTuple = [
-    profileId: BigNumberish,
-    pubId: BigNumberish,
-    currency: AddressLike,
-    amount: BigNumberish,
-    asker: AddressLike
-  ];
-  export type OutputTuple = [
-    profileId: bigint,
-    pubId: bigint,
-    currency: string,
-    amount: bigint,
-    asker: string
-  ];
-  export interface OutputObject {
-    profileId: bigint;
-    pubId: bigint;
-    currency: string;
-    amount: bigint;
-    asker: string;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export namespace BountyPaidEvent {
-  export type InputTuple = [
-    profileId: BigNumberish,
-    pubId: BigNumberish,
-    expertAddress: AddressLike,
-    amount: BigNumberish
-  ];
-  export type OutputTuple = [
-    profileId: bigint,
-    pubId: bigint,
-    expertAddress: string,
-    amount: bigint
-  ];
-  export interface OutputObject {
-    profileId: bigint;
-    pubId: bigint;
-    expertAddress: string;
-    amount: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export interface BountyCollectModule extends BaseContract {
-  connect(runner?: ContractRunner | null): BountyCollectModule;
+export interface IPublicationActionModule extends BaseContract {
+  connect(runner?: ContractRunner | null): IPublicationActionModule;
   waitForDeployment(): Promise<this>;
 
-  interface: BountyCollectModuleInterface;
+  interface: IPublicationActionModuleInterface;
 
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
@@ -200,10 +124,6 @@ export interface BountyCollectModule extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
-  HUB: TypedContractMethod<[], [string], "view">;
-
-  acceptedAnswerNFT: TypedContractMethod<[], [string], "view">;
-
   initializePublicationAction: TypedContractMethod<
     [
       profileId: BigNumberish,
@@ -215,8 +135,6 @@ export interface BountyCollectModule extends BaseContract {
     "nonpayable"
   >;
 
-  owner: TypedContractMethod<[], [string], "view">;
-
   processPublicationAction: TypedContractMethod<
     [processActionParams: Types.ProcessActionParamsStruct],
     [string],
@@ -227,12 +145,6 @@ export interface BountyCollectModule extends BaseContract {
     key: string | FunctionFragment
   ): T;
 
-  getFunction(
-    nameOrSignature: "HUB"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "acceptedAnswerNFT"
-  ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "initializePublicationAction"
   ): TypedContractMethod<
@@ -246,9 +158,6 @@ export interface BountyCollectModule extends BaseContract {
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "owner"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
     nameOrSignature: "processPublicationAction"
   ): TypedContractMethod<
     [processActionParams: Types.ProcessActionParamsStruct],
@@ -256,42 +165,5 @@ export interface BountyCollectModule extends BaseContract {
     "nonpayable"
   >;
 
-  getEvent(
-    key: "BountyInitialized"
-  ): TypedContractEvent<
-    BountyInitializedEvent.InputTuple,
-    BountyInitializedEvent.OutputTuple,
-    BountyInitializedEvent.OutputObject
-  >;
-  getEvent(
-    key: "BountyPaid"
-  ): TypedContractEvent<
-    BountyPaidEvent.InputTuple,
-    BountyPaidEvent.OutputTuple,
-    BountyPaidEvent.OutputObject
-  >;
-
-  filters: {
-    "BountyInitialized(uint256,uint256,address,uint256,address)": TypedContractEvent<
-      BountyInitializedEvent.InputTuple,
-      BountyInitializedEvent.OutputTuple,
-      BountyInitializedEvent.OutputObject
-    >;
-    BountyInitialized: TypedContractEvent<
-      BountyInitializedEvent.InputTuple,
-      BountyInitializedEvent.OutputTuple,
-      BountyInitializedEvent.OutputObject
-    >;
-
-    "BountyPaid(uint256,uint256,address,uint256)": TypedContractEvent<
-      BountyPaidEvent.InputTuple,
-      BountyPaidEvent.OutputTuple,
-      BountyPaidEvent.OutputObject
-    >;
-    BountyPaid: TypedContractEvent<
-      BountyPaidEvent.InputTuple,
-      BountyPaidEvent.OutputTuple,
-      BountyPaidEvent.OutputObject
-    >;
-  };
+  filters: {};
 }

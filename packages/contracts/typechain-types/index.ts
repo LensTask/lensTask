@@ -5,6 +5,8 @@ import type * as openzeppelin from "./@openzeppelin";
 export type { openzeppelin };
 import type * as contracts from "./contracts";
 export type { contracts };
+import type * as lensModules from "./lens-modules";
+export type { lensModules };
 export * as factories from "./factories";
 export type { Ownable } from "./@openzeppelin/contracts/access/Ownable";
 export { Ownable__factory } from "./factories/@openzeppelin/contracts/access/Ownable__factory";
@@ -44,3 +46,9 @@ export type { IAcceptedAnswerNFT } from "./contracts/BountyCollectModule.sol/IAc
 export { IAcceptedAnswerNFT__factory } from "./factories/contracts/BountyCollectModule.sol/IAcceptedAnswerNFT__factory";
 export type { MockERC20 } from "./contracts/MockERC20";
 export { MockERC20__factory } from "./factories/contracts/MockERC20__factory";
+export type { HubRestricted } from "./lens-modules/contracts/base/HubRestricted";
+export { HubRestricted__factory } from "./factories/lens-modules/contracts/base/HubRestricted__factory";
+export type { IPublicationActionModule } from "./lens-modules/contracts/interfaces/IPublicationActionModule";
+export { IPublicationActionModule__factory } from "./factories/lens-modules/contracts/interfaces/IPublicationActionModule__factory";
+export type { Errors } from "./lens-modules/contracts/libraries/constants/Errors";
+export { Errors__factory } from "./factories/lens-modules/contracts/libraries/constants/Errors__factory";

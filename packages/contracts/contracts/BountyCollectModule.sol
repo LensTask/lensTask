@@ -2,15 +2,17 @@
 pragma solidity ^0.8.23;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IPublicationActionModule as IActionModule} from "lens-modules/contracts/interfaces/IPublicationActionModule.sol";
+import {HubRestricted} from "lens-modules/contracts/base/HubRestricted.sol";
+// Import the Types library from lens-modules
+import {Types} from "lens-modules/contracts/libraries/constants/Types.sol";
 
-// Interface for the NFT contract
 interface IAcceptedAnswerNFT {
     function mint(address to) external returns (uint256 tokenId);
 }
 
-contract BountyCollectModule { // Not inheriting IActionModule yet
+contract BountyCollectModule is IActionModule, HubRestricted {
 
-    // === State Variables ===
     struct BountyData {
         address bountyCurrency;
         uint256 bountyAmount;
@@ -18,78 +20,105 @@ contract BountyCollectModule { // Not inheriting IActionModule yet
         address selectedExpert;
         bool isInitialized;
     }
-    mapping(bytes32 => BountyData) public bountyStore;
-    mapping(bytes32 => bool) public paid;
-    address public owner;
-    IAcceptedAnswerNFT public acceptedAnswerNFT; // Store NFT contract address
 
-    // === Events ===
-    event BountyInitialized(bytes32 indexed actionId, address indexed currency, uint256 amount, address indexed asker);
-    event BountyPaid(bytes32 indexed actionId, address indexed expert, uint256 amount);
-    event AnswerNFTSet(address indexed nftContract); // Event for setting NFT address
+    mapping(uint256 => mapping(uint256 => BountyData)) internal _bounties;
+    mapping(uint256 => mapping(uint256 => bool)) internal _isBountyPaid;
 
-    // === Constructor ===
-    // Now takes the NFT contract address
-    constructor(address nftContractAddress) {
+    address public immutable owner;
+    IAcceptedAnswerNFT public immutable acceptedAnswerNFT;
+
+    event BountyInitialized(
+        uint256 indexed profileId,
+        uint256 indexed pubId,
+        address indexed currency,
+        uint256 amount,
+        address asker
+    );
+    event BountyPaid(
+        uint256 indexed profileId,
+        uint256 indexed pubId,
+        address indexed expertAddress,
+        uint256 amount
+    );
+
+    constructor(address nftContractAddress, address hubAddress) HubRestricted(hubAddress) {
         owner = msg.sender;
         require(nftContractAddress != address(0), "Bounty: Invalid NFT address");
         acceptedAnswerNFT = IAcceptedAnswerNFT(nftContractAddress);
-        emit AnswerNFTSet(nftContractAddress);
     }
 
-    // === Initialize Function ===
-    function initialize(bytes32 actionId, address asker, bytes calldata data) external {
-        require(!bountyStore[actionId].isInitialized, "Bounty: Already initialized");
-        require(asker != address(0), "Bounty: Invalid asker address");
-        (address currency, uint256 amount) = abi.decode(data, (address, uint256));
+    function initializePublicationAction(
+        uint256 profileId,
+        uint256 pubId,
+        address transactionExecutor,
+        bytes calldata data // This remains bytes calldata as per IActionModule
+    ) external override onlyHub returns (bytes memory) {
+        require(!_bounties[profileId][pubId].isInitialized, "Bounty: Already initialized");
+        require(transactionExecutor != address(0), "Bounty: Invalid transaction executor");
+        (address currency, uint256 amount) = abi.decode(data, (address, uint256)); // Decode from generic bytes
         require(currency != address(0), "Bounty: Invalid currency address");
         require(amount > 0, "Bounty: Amount must be positive");
 
-        bountyStore[actionId] = BountyData({
+        _bounties[profileId][pubId] = BountyData({
             bountyCurrency: currency,
             bountyAmount: amount,
-            asker: asker,
+            asker: transactionExecutor,
             selectedExpert: address(0),
             isInitialized: true
         });
-        emit BountyInitialized(actionId, currency, amount, asker);
-
+        emit BountyInitialized(profileId, pubId, currency, amount, transactionExecutor);
         IERC20 token = IERC20(currency);
-        bool success = token.transferFrom(asker, address(this), amount);
+        bool success = token.transferFrom(transactionExecutor, address(this), amount);
         require(success, "Bounty: ERC20 transferFrom failed");
+        return "";
     }
 
-    // === Process Action Function ===
-    function processAction(
-        bytes32 actionId,
-        address actor,
-        bytes calldata processData
-    ) external returns (bytes memory data) {
-        BountyData storage bounty = bountyStore[actionId];
+    // Corrected signature to match IPublicationActionModule
+    function processPublicationAction(
+        Types.ProcessActionParams calldata processActionParams // Use the struct from Lens Types
+    ) external override onlyHub returns (bytes memory) {
+        // Extract necessary fields from processActionParams struct
+        // processActionParams includes:
+        // uint256 publicationActedProfileId;
+        // uint256 publicationActedId;
+        // uint256 actorProfileId;
+        // address transactionExecutor;
+        // bytes actionModuleData; (This is our old 'processActionParams')
+
+        // For paying the bounty, the key identifiers are from the publication the module is attached to.
+        // In IActionModule, pubIdPointing is the publication ID of the action.
+        // And profileId is the actor's profile ID.
+
+        // Let's assume the action is on the question itself.
+        // The 'actorProfileId' from the struct is the profileId of who initiated this processing (should be asker).
+        // The 'publicationActedId' is the pubId of the question.
+        // The 'transactionExecutor' is the wallet executing this.
+
+        BountyData storage bounty = _bounties[processActionParams.publicationActedProfileId][processActionParams.publicationActedId];
 
         require(bounty.isInitialized, "Bounty: Not initialized");
-        require(!paid[actionId], "Bounty: Already paid");
-        require(actor == bounty.asker, "Bounty: Only asker can accept");
+        require(!_isBountyPaid[processActionParams.publicationActedProfileId][processActionParams.publicationActedId], "Bounty: Already paid");
+        // Ensure the transaction executor (wallet) is the original asker stored
+        require(processActionParams.transactionExecutor == bounty.asker, "Bounty: Only asker can accept");
+        // Also ensure the actor profile ID matches the profile that created the bounty (optional check, but good)
+        // require(processActionParams.actorProfileId == processActionParams.publicationActedProfileId, "Bounty: Actor must be asker profile");
 
-        (address expertAddress) = abi.decode(processData, (address));
-        require(expertAddress != address(0), "Bounty: Invalid expert address");
 
-        paid[actionId] = true;
-        bounty.selectedExpert = expertAddress;
+        // Decode the expert's wallet address from actionModuleData
+        (address expertWalletAddress) = abi.decode(processActionParams.actionModuleData, (address));
+        require(expertWalletAddress != address(0), "Bounty: Invalid expert address");
 
-        // --- Payout ---
+        _isBountyPaid[processActionParams.publicationActedProfileId][processActionParams.publicationActedId] = true;
+        bounty.selectedExpert = expertWalletAddress;
+
         IERC20 token = IERC20(bounty.bountyCurrency);
-        bool success = token.transfer(expertAddress, bounty.bountyAmount);
+        bool success = token.transfer(expertWalletAddress, bounty.bountyAmount);
         require(success, "Bounty: ERC20 transfer failed");
 
-        // --- Mint NFT ---
-        // Check if NFT contract address is set (should be by constructor)
-        if (address(acceptedAnswerNFT) != address(0)) {
-             acceptedAnswerNFT.mint(expertAddress); // Mint NFT to the expert
-        }
+        acceptedAnswerNFT.mint(expertWalletAddress);
 
-        emit BountyPaid(actionId, expertAddress, bounty.bountyAmount);
+        emit BountyPaid(processActionParams.publicationActedProfileId, processActionParams.publicationActedId, expertWalletAddress, bounty.bountyAmount);
 
-        return "";
+        return abi.encode(expertWalletAddress, bounty.bountyAmount);
     }
 }
