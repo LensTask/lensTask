@@ -3,11 +3,8 @@
 /* eslint-disable */
 import type {
   BaseContract,
-  BytesLike,
   FunctionFragment,
-  Result,
   Interface,
-  AddressLike,
   ContractRunner,
   ContractMethod,
   Listener,
@@ -17,24 +14,15 @@ import type {
   TypedDeferredTopicFilter,
   TypedEventLog,
   TypedListener,
-  TypedContractMethod,
-} from "./common";
+} from "../../../common";
 
-export interface AcceptedAnswerNFTInterface extends Interface {
-  getFunction(nameOrSignature: "MODULE" | "mint"): FunctionFragment;
+export interface StringsInterface extends Interface {}
 
-  encodeFunctionData(functionFragment: "MODULE", values?: undefined): string;
-  encodeFunctionData(functionFragment: "mint", values: [AddressLike]): string;
-
-  decodeFunctionResult(functionFragment: "MODULE", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "mint", data: BytesLike): Result;
-}
-
-export interface AcceptedAnswerNFT extends BaseContract {
-  connect(runner?: ContractRunner | null): AcceptedAnswerNFT;
+export interface Strings extends BaseContract {
+  connect(runner?: ContractRunner | null): Strings;
   waitForDeployment(): Promise<this>;
 
-  interface: AcceptedAnswerNFTInterface;
+  interface: StringsInterface;
 
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
@@ -73,20 +61,9 @@ export interface AcceptedAnswerNFT extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
-  MODULE: TypedContractMethod<[], [string], "view">;
-
-  mint: TypedContractMethod<[to: AddressLike], [bigint], "nonpayable">;
-
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
-
-  getFunction(
-    nameOrSignature: "MODULE"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "mint"
-  ): TypedContractMethod<[to: AddressLike], [bigint], "nonpayable">;
 
   filters: {};
 }
