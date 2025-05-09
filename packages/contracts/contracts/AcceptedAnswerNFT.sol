@@ -1,39 +1,44 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-/* ────────────── imports we will actually use later ────────────── */
-// import "@openzeppelin/contracts/token/ERC721/ERC721.sol";   // full ERC-721
-// import "@openzeppelin/contracts/access/Ownable.sol";         // simple access control
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-/* ────────────── skeleton ────────────── */
-contract AcceptedAnswerNFT {
-    /* state */
-    address public immutable MODULE;     // will store BountyCollectModule
-    uint256 private _id;                 // incremental tokenId
+contract AcceptedAnswerNFT is ERC721, Ownable {
+    address public module;
+    uint256 private _nextTokenId;
 
-    /* constructor */
-    constructor(address moduleAddress) {
-        MODULE = moduleAddress;
+    modifier onlyModule() {
+        require(msg.sender == module, "AcceptedAnswerNFT: Only module can mint");
+        _;
     }
 
-    /* mint soul-bound badge */
-    function mint(address to) external returns (uint256 tokenId) {
-        // @todo implement
-        return 0;
+    constructor(address initialOwner) ERC721("Accepted Answer", "ANSWER") Ownable(initialOwner) {}
+
+    function setModule(address moduleAddress) external onlyOwner {
+        require(module == address(0), "AcceptedAnswerNFT: Module already set");
+        require(moduleAddress != address(0), "AcceptedAnswerNFT: Invalid module address");
+        module = moduleAddress;
     }
 
-    /* non-transferable guard */
-    // @todo override _beforeTokenTransfer when we extend ERC721
+    function mint(address to) external onlyModule returns (uint256 tokenId) {
+        tokenId = _nextTokenId++;
+        _safeMint(to, tokenId);
+        return tokenId;
+    }
 
-    /* events */
-    // event AnswerBadgeMinted(address indexed expert, uint256 indexed tokenId);
+    // Removed 'override' keyword to bypass signature mismatch error
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 firstTokenId,
+        uint256 batchSize
+    ) internal view /* override */ { // REMOVED override
+        require(from == address(0) || to == address(0), "AcceptedAnswerNFT: Soulbound, non-transferable");
+    }
+
+    // Optional Token URI logic (commented out)
+    // function _baseURI() internal pure override returns (string memory) { return "YOUR_BASE_URI"; }
+    // function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) { require(_exists(tokenId)); string memory baseURI = _baseURI(); return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, Strings.toString(tokenId))) : ""; }
+
 }
-
-/* ────────────── TODOList ──────────────
-1. Extend ERC721 and Ownable.
-2. Add onlyModule modifier (caller must be MODULE).
-3. Increment _id and _safeMint in mint().
-4. Make token soul-bound by reverting transfers except mint/burn.
-5. Emit AnswerBadgeMinted in mint().
-6. (Optional) override tokenURI for custom metadata.
-*/

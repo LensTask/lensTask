@@ -3,11 +3,8 @@
 /* eslint-disable */
 import type {
   BaseContract,
-  BytesLike,
   FunctionFragment,
-  Result,
   Interface,
-  AddressLike,
   ContractRunner,
   ContractMethod,
   Listener,
@@ -17,35 +14,15 @@ import type {
   TypedDeferredTopicFilter,
   TypedEventLog,
   TypedListener,
-  TypedContractMethod,
-} from "./common";
+} from "../../../../common";
 
-export interface BountyCollectModuleInterface extends Interface {
-  getFunction(
-    nameOrSignature: "initialize" | "processAction"
-  ): FunctionFragment;
+export interface IERC20ErrorsInterface extends Interface {}
 
-  encodeFunctionData(
-    functionFragment: "initialize",
-    values: [BytesLike, BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "processAction",
-    values: [AddressLike, BytesLike, BytesLike]
-  ): string;
-
-  decodeFunctionResult(functionFragment: "initialize", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "processAction",
-    data: BytesLike
-  ): Result;
-}
-
-export interface BountyCollectModule extends BaseContract {
-  connect(runner?: ContractRunner | null): BountyCollectModule;
+export interface IERC20Errors extends BaseContract {
+  connect(runner?: ContractRunner | null): IERC20Errors;
   waitForDeployment(): Promise<this>;
 
-  interface: BountyCollectModuleInterface;
+  interface: IERC20ErrorsInterface;
 
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
@@ -84,36 +61,9 @@ export interface BountyCollectModule extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
-  initialize: TypedContractMethod<
-    [actionId: BytesLike, data: BytesLike],
-    [void],
-    "nonpayable"
-  >;
-
-  processAction: TypedContractMethod<
-    [caller: AddressLike, actionId: BytesLike, processData: BytesLike],
-    [string],
-    "nonpayable"
-  >;
-
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
-
-  getFunction(
-    nameOrSignature: "initialize"
-  ): TypedContractMethod<
-    [actionId: BytesLike, data: BytesLike],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "processAction"
-  ): TypedContractMethod<
-    [caller: AddressLike, actionId: BytesLike, processData: BytesLike],
-    [string],
-    "nonpayable"
-  >;
 
   filters: {};
 }

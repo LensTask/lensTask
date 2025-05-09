@@ -3,17 +3,17 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "test": "pnpm exec hardhat test",
+    "test": "pnpm exec hardhat test ",
     "deploy": "hardhat run scripts/deploy.ts --network lensTestnet",
-    "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost" 
-  },
-  "dependencies": {
-    "@openzeppelin/contracts": "^5.3.0"
+    "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
-    "@types/node": "^22.15.15",
-    "dotenv": "^16.5.0",
-    "typescript": "^5.3.3"
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.3.0",
+    "chai": "^4.2.0",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
   }
 }
