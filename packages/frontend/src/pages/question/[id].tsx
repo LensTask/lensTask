@@ -52,18 +52,24 @@ export default function QuestionDetail() {
   const { data: questionData, isLoading: isLoadingQuestion, error: questionError } = useQuery({
     queryKey: ["question", publicationId],
     queryFn: () => {
-      if (!publicationId || publicationId === MOCK_QUESTION_ID) { // Don't fetch if using mock ID
-           console.log("Using mock question data.");
-           return Promise.resolve(MOCK_QUESTION);
+      if (!publicationId || publicationId === MOCK_QUESTION_ID) {
+        console.log("Using mock question data for QuestionDetail.");
+        return Promise.resolve(MOCK_QUESTION);
       }
-      console.log(`Fetching question: ${publicationId}`);
-      // Use fetch, V1.3.1 might return single item or null / throw error
-      return lensClient.publication.fetch({ publicationId }).catch(err => {
-          console.error("Actual question fetch failed, using mock.", err);
-          // Throw the specific error for display, but we'll use mock data below
-          throw new Error(`Failed to fetch ${publicationId}: ${err.message}`);
-          // Return mock data on error: return MOCK_QUESTION; (alternative)
-      });
+      console.log(`[QuestionDetail] Fetching publication with ID: ${publicationId}`);
+      try {
+        // --- CORRECTED CALL ---
+        // Check the SDK's exact expected parameter name for fetching by ID
+        // It's often 'forId' or 'forPublicationId' for fetching a single publication.
+        // Let's assume it's 'forId' based on common patterns with the V2 client.
+        return lensClient.publication.fetch({
+          forId: publicationId // Or forPublicationId: publicationId - CHECK SDK DOCS/TYPES
+        });
+        // --- END CORRECTION ---
+      } catch (err: any) {
+        console.error(`[QuestionDetail] Actual publication fetch for ${publicationId} failed. Error:`, err);
+        throw new Error(`Failed to fetch publication ${publicationId}: ${err.message}`);
+      }
     },
     enabled: !!publicationId,
     retry: false, // Don't retry on error if using mock fallback

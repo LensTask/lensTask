@@ -95,7 +95,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
             <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5 mr-1 text-blue-500" /> {stats?.comments || 0} Answers
           </span>
         </div>
-        <Link href={`/post/${pub.id}`} className="text-sky-600 dark:text-sky-400 hover:underline font-medium">
+        <Link href={`/question/${pub.id}`} className="text-sky-600 dark:text-sky-400 hover:underline font-medium">
           View Details
         </Link>
       </div>
