@@ -4,3 +4,4 @@ artifacts
 cache
 .next
 dist
+.pnpm-store
