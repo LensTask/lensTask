@@ -1,30 +1,29 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat"; // Import network
-import { ethers, network } from "hardhat"; // Import network
 import { Signer } from "ethers";
-import { BountyCollectModule } from "../typechain-types/contracts/BountyCollectModule";
+import { BountyCollectModule } from "../typechain-types/contracts/BountyCollectModule.sol/BountyCollectModule";
 import { AcceptedAnswerNFT } from "../typechain-types/contracts/AcceptedAnswerNFT";
 import { MockERC20 } from "../typechain-types/contracts/MockERC20";
-import { Types } from "../node_modules/lens-modules/contracts/libraries/constants/Types";
+import { Types } from "./lens-types";
 
 describe("BountyCollectModule", () => {
     let deployer: Signer;
     let asker: Signer;
     let expert: Signer;
     let other: Signer;
-    let bountyModule: BountyCollectModule;
-    let answerNFT: AcceptedAnswerNFT;
-    let mockERC20: MockERC20;
+    let bountyModule: any;
+    let answerNFT: any;
+    let mockERC20: any;
 
     let deployerAddress: string;
     let askerAddress: string;
     let expertAddress: string;
     let otherAddress: string;
-    let nftAddress: string;
-    let moduleAddress: string;
-    let tokenAddress: string;
+    let nftAddress: any;
+    let moduleAddress: any;
+    let tokenAddress: any;
 
-    const bountyAmount = ethers.parseUnits("100", 18);
+    const bountyAmount:any = ethers.parseUnits("100", 18);
     const profileId = BigInt(1);
     const pubId = BigInt(1);
     const anotherProfileId = BigInt(2);
@@ -35,7 +34,7 @@ describe("BountyCollectModule", () => {
         this.timeout(60000); // 60 seconds for beforeEach on testnet
 
         console.log(`[Test - beforeEach] Running on network: ${network.name}`);
-        const signers = await ethers.getSigners();
+        const signers:any = await ethers.getSigners();
         console.log(`[Test - beforeEach] ethers.getSigners() returned ${signers.length} signers.`);
 
         if (signers.length === 0) {

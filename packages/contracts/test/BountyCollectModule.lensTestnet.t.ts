@@ -6,7 +6,7 @@ import { Signer } from "ethers";
 describe("BountyCollectModule (Lens Testnet Deployment)", function () {
   this.timeout(240000); // Increase timeout for real testnet interactions (4 minutes)
 
-  let deployer: Signer;
+  let deployer: any;
   let deployerAddress: string;
   let hubPlaceholderAddress: string;
 
@@ -82,7 +82,7 @@ describe("BountyCollectModule (Lens Testnet Deployment)", function () {
 
   it("Should allow setting module in AcceptedAnswerNFT on Lens Testnet", async function () {
     const NFTFactory = await ethers.getContractFactory("AcceptedAnswerNFT", deployer);
-    const testNft = await NFTFactory.deploy(deployerAddress);
+    const testNft:any = await NFTFactory.deploy(deployerAddress);
     await testNft.waitForDeployment();
     const testNftAddress = await testNft.getAddress();
 

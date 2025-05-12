@@ -9,7 +9,7 @@ import { Types } from "./lens-types";
 describe("BountyCollectModule (Integration Testnet - Happy Path)", function () {
   this.timeout(300000); // 5 minutes for all testnet interactions
 
-  let deployerAndUser: Signer; // Single signer for all roles on testnet
+  let deployerAndUser: any; // Single signer for all roles on testnet
 
   let deployerAddress: string; // Will be the same as askerAddress and expertAddress for testnet
   let askerAddress: string;
@@ -19,9 +19,9 @@ describe("BountyCollectModule (Integration Testnet - Happy Path)", function () {
   let tokenAddress: string;
   let hubAddress: string;
 
-  let bountyModule: BountyCollectModule;
-  let answerNFT: AcceptedAnswerNFT;
-  let mockERC20: MockERC20;
+  let bountyModule: any;
+  let answerNFT: any;
+  let mockERC20: any;
 
   const bountyAmount = ethers.parseUnits("0.001", 18);
   const profileId = BigInt(1); // Example Asker's Profile ID
