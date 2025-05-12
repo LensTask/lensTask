@@ -5,3 +5,6 @@ cache
 .next
 dist
 .pnpm-store
+artifacts-zk
+cache-zk
+typechain-types

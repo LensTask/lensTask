@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "dotenv/config";
 import "@nomicfoundation/hardhat-toolbox";
+import "@matterlabs/hardhat-zksync";
 
 const privateKey = process.env.PRIVATE_KEY;
 
@@ -21,12 +22,26 @@ const config: HardhatUserConfig = {
       },
     },
   },
+  zksolc: {
+    version: "latest",
+    settings: {},
+  },
   defaultNetwork: "hardhat",
   networks: {
-    hardhat: {},
+    hardhat: {
+      zksync: true,
+    },
     lensTestnet: {
-      url: process.env.RPC_URL || "",
+      url: 'https://rpc.testnet.lens.xyz', //process.env.RPC_URL || "",
       accounts: accounts,
+      zksync: true,
+      ethNetwork: "sepolia",
+    },
+    lensMainnet: {
+      url: 'https://rpc.lens.xyz',
+      accounts: accounts,
+      zksync: true,
+      ethNetwork: "mainnet",
     },
     localhost: {
       url: "http://127.0.0.1:8545",
