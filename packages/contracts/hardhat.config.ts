@@ -15,11 +15,11 @@ const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.23",
     settings: {
-      // Remappings section entirely removed
       optimizer: {
         enabled: true,
         runs: 200,
       },
+      // No remappings needed with correct imports and pnpm setup
     },
   },
   zksolc: {
@@ -47,6 +47,11 @@ const config: HardhatUserConfig = {
 
       url: "http://127.0.0.1:8545",
       chainId: 31337,
+    },
+    lensSepolia: {
+      url: lensTestnetRpcUrlFromEnv || "https://rpc.testnet.lens.dev",
+      chainId: 37111,
+      accounts: lensSepoliaAccounts,
     }
   },
   paths: {
@@ -59,6 +64,21 @@ const config: HardhatUserConfig = {
     outDir: 'typechain-types',
     target: 'ethers-v6',
   },
+  etherscan: {
+    apiKey: {
+      "lensSepolia": process.env.LENS_TESTNET_BLOCKSCOUT_API_KEY || "YOUR_API_KEY_PLACEHOLDER"
+    },
+    customChains: [
+      {
+        network: "lensSepolia",
+        chainId: 37111,
+        urls: {
+          apiURL: "https://explorer.testnet.lens.dev/api",
+          browserURL: "https://explorer.testnet.lens.dev"
+        }
+      }
+    ]
+  }
 };
 
 export default config;

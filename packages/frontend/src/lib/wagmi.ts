@@ -1,42 +1,30 @@
 import { createConfig, http } from 'wagmi';
-import { mainnet, polygon, localhost } from 'wagmi/chains';
-import { injected } from 'wagmi/connectors'; // Using a basic connector for now
+// For LensProvider V3, the primary chain is Lens Chain Sepolia (37111).
+// WagmiProvider should at least include this chain.
+// Other chains like localhost can be kept for local contract testing if separate.
+import { sepolia, localhost } from 'wagmi/chains'; // Using sepolia as an example general chain
 
-// Get RPC URL and Chain ID from environment variables, with defaults
-const defaultRpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "https://rpc.ankr.com/polygon";
-const defaultChainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "137");
-
-let targetChainConfig;
-
-if (defaultChainId === 31337 || defaultRpcUrl.includes("127.0.0.1") || defaultRpcUrl.includes("localhost")) {
-  targetChainConfig = {
-    chain: localhost,
-    rpcUrl: defaultRpcUrl,
-    transportInput: http(defaultRpcUrl),
-  };
-} else if (defaultChainId === 137) {
-  targetChainConfig = {
-    chain: polygon,
-    rpcUrl: defaultRpcUrl, // Use the env var RPC if different from default
-    transportInput: http(defaultRpcUrl),
-  };
-} else {
-  targetChainConfig = { // Fallback to mainnet or a default
-    chain: mainnet,
-    rpcUrl: process.env.NEXT_PUBLIC_RPC_URL_MAINNET || "https://cloudflare-eth.com", // Example
-    transportInput: http(process.env.NEXT_PUBLIC_RPC_URL_MAINNET || "https://cloudflare-eth.com"),
-  };
-}
+// Define Lens Chain Sepolia for Wagmi
+const lensChainSepolia = {
+  id: 37111,
+  name: 'Lens Chain Sepolia',
+  nativeCurrency: { name: 'GRASS', symbol: 'GRASS', decimals: 18 },
+  rpcUrls: {
+    default: { http: [process.env.NEXT_PUBLIC_LENS_TESTNET_RPC_URL || 'https://rpc.testnet.lens.dev'] },
+    public: { http: [process.env.NEXT_PUBLIC_LENS_TESTNET_RPC_URL || 'https://rpc.testnet.lens.dev'] },
+  },
+  blockExplorers: {
+    default: { name: 'LensScan', url: 'https://explorer.testnet.lens.dev' },
+  },
+  testnet: true,
+};
 
 export const wagmiConfig = createConfig({
-  chains: [targetChainConfig.chain],
-  connectors: [
-    injected(), // Basic browser wallet connector (MetaMask, etc.)
-    // You would add WalletConnect connector here if needed, e.g.,
-    // walletConnect({ projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID! }),
-  ],
+  // chains should ideally include the chain LensProvider's environment targets
+  chains: [lensChainSepolia, localhost],
   transports: {
-    [targetChainConfig.chain.id]: targetChainConfig.transportInput,
+    [lensChainSepolia.id]: http(lensChainSepolia.rpcUrls.default.http[0]),
+    [localhost.id]: http(), // For local hardhat node
   },
-  ssr: true, // Explicitly enable SSR for Wagmi
+  // ssr: true, // Optional, often handled by providers
 });

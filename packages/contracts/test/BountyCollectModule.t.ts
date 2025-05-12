@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat"; // Import network
+import { ethers, network } from "hardhat"; // Import network
 import { Signer } from "ethers";
 import { BountyCollectModule } from "../typechain-types/contracts/BountyCollectModule";
 import { AcceptedAnswerNFT } from "../typechain-types/contracts/AcceptedAnswerNFT";

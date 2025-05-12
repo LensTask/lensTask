@@ -1,28 +1,37 @@
-import "@/styles/globals.css";
-import type { AppProps } from "next/app"; // Removed AppContext as it's not used here
+import '@/styles/globals.css';
+import type { AppProps } from 'next/app';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider, State } from 'wagmi'; // Import State
-import { wagmiConfig } from "@/lib/wagmi";
-import { ConnectKitProvider } from 'connectkit';
-import Navbar from '../components/Navbar'; // 1. IMPORT THE NAVBAR
+
+import {
+  LensProvider,
+  development,             // Import individual constants from react-web
+  production,
+} from '@lens-protocol/react-web';
+import { bindings } from '@lens-protocol/wagmi';
+import { WagmiProvider } from 'wagmi'; // WagmiProvider from wagmi
+import { wagmiConfig } from '@/lib/wagmi'; // Your wagmi config
 
 const queryClient = new QueryClient();
 
-interface MyAppProps extends AppProps {
-  initialState?: State;
-}
+// LensProvider config for V3
+// 'development' from @lens-protocol/react-web points to Lens Chain Sepolia
+// 'production' from @lens-protocol/react-web points to Lens Mainnet (Polygon)
+const lensEnvironment =
+  process.env.NODE_ENV === 'development' ? development : production;
 
-function MyApp({ Component, pageProps, initialState }: MyAppProps) {
+const lensConfig = {
+  environment: lensEnvironment,
+  bindings: bindings(wagmiConfig),
+};
+
+export default function App({ Component, pageProps }: AppProps) {
   return (
-    <WagmiProvider config={wagmiConfig} initialState={initialState}>
+    <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <ConnectKitProvider> {/* theme="auto" mode="light" // Optional ConnectKit theming props */}
-          <Navbar /> {/* 2. ADD THE NAVBAR COMPONENT HERE */}
+        <LensProvider config={lensConfig}>
           <Component {...pageProps} />
-        </ConnectKitProvider>
+        </LensProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
 }
-
-export default MyApp;

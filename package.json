@@ -1,14 +1,19 @@
 {
   "name": "lens-intel-network",
   "private": true,
+  "packageManager": "pnpm@10.10.0",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "dev": "pnpm --filter @lin/frontend dev",
     "test": "pnpm --filter @lin/contracts run test",
-    "deploy": "pnpm --filter @lin/contracts run deploy",
+    "deploy": "pnpm exec dotenv-cli -e .env -- pnpm --filter @lin/contracts run deploy",
     "dev:node": "pnpm --filter @lin/contracts exec hardhat node --hostname 0.0.0.0",
+    "dev:deploy-local": "pnpm exec dotenv-cli -e .env -- pnpm --filter @lin/contracts run deploy:localhost",
+    "deploy:lensSepolia": "pnpm --filter @lin/contracts run deploy:lensSepolia",
+    "test:contracts-lensSepolia": "pnpm exec dotenv-cli -e .env -- pnpm --filter @lin/contracts exec hardhat test ./test/BountyCollectModule.lensTestnet.t.ts --network lensSepolia",
+    "dev:frontend-local": "pnpm exec cross-env NEXT_PUBLIC_LENS_TESTNET_RPC_URL=https://rpc.testnet.lens.dev NEXT_PUBLIC_CHAIN_ID=37111 pnpm --filter @lin/frontend dev"
     "dev:deploy-local": "pnpm exec dotenv-cli -e .env -- pnpm --filter @lin/contracts run deploy:localhost",
     "deploy:lensSepolia": "pnpm --filter @lin/contracts run deploy:lensSepolia",
     "test:contracts-lensSepolia": "pnpm exec dotenv-cli -e .env -- pnpm --filter @lin/contracts exec hardhat test ./test/BountyCollectModule.lensTestnet.t.ts --network lensSepolia",
