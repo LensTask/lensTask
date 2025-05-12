@@ -48,11 +48,11 @@ const config: HardhatUserConfig = {
       url: "http://127.0.0.1:8545",
       chainId: 31337,
     },
-    lensSepolia: {
-      url: lensTestnetRpcUrlFromEnv || "https://rpc.testnet.lens.dev",
-      chainId: 37111,
-      accounts: lensSepoliaAccounts,
-    }
+    // lensSepolia: {
+    //   url: lensTestnetRpcUrlFromEnv || "https://rpc.testnet.lens.dev",
+    //   chainId: 37111,
+    //   accounts: lensSepoliaAccounts,
+    // }
   },
   paths: {
     artifacts: "./artifacts",
@@ -63,6 +63,7 @@ const config: HardhatUserConfig = {
   typechain: {
     outDir: 'typechain-types',
     target: 'ethers-v6',
+
   },
   etherscan: {
     apiKey: {

@@ -9,7 +9,10 @@
     "dev": "pnpm --filter @lin/frontend dev",
     "test": "pnpm --filter @lin/contracts run test",
     "deploy": "pnpm --filter @lin/contracts run deploy",
-    "dev:node": "pnpm --filter @lin/contracts exec hardhat node --hostname 0.0.0.0"
+    "dev:node": "pnpm --filter @lin/contracts exec hardhat node --hostname 0.0.0.0",
+    "test:contracts:unit" : "pnpm --filter @lin/contracts run test:contracts:unit",
+    "test:contracts:testnet" : "pnpm --filter @lin/contracts run test:contracts:testnet",
+    "test:contracts:integration" : "pnpm --filter @lin/contracts run test:contracts:integration"
   },
   "devDependencies": {
     "@lens-protocol/client": "^2.0.0",

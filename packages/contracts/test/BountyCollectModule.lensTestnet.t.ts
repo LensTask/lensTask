@@ -1,8 +1,7 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 import { Signer } from "ethers";
-import { BountyCollectModule } from "../typechain-types/contracts/BountyCollectModule";
-import { AcceptedAnswerNFT } from "../typechain-types/contracts/AcceptedAnswerNFT";
+
 
 describe("BountyCollectModule (Lens Testnet Deployment)", function () {
   this.timeout(240000); // Increase timeout for real testnet interactions (4 minutes)
@@ -15,7 +14,7 @@ describe("BountyCollectModule (Lens Testnet Deployment)", function () {
     console.log("[Testnet Test] Running 'before all' hook...");
     console.log("[Testnet Test] Current network selected:", network.name);
 
-    if (network.name !== "lensSepolia") {
+    if (network.name !== "lensTestnet") {
       console.log(`[Testnet Test] Not on lensSepolia network (current: ${network.name}), skipping actual deployment tests.`);
       this.skip();
       return; // Ensure no further execution in before hook if skipping
@@ -73,7 +72,7 @@ describe("BountyCollectModule (Lens Testnet Deployment)", function () {
 
     console.log("[Testnet Test - Module] Deploying BountyCollectModule to Lens Testnet...");
     const ModuleFactory = await ethers.getContractFactory("BountyCollectModule", deployer);
-    const bountyModule = await ModuleFactory.deploy(localNftAddress, hubPlaceholderAddress);
+    const bountyModule = await ModuleFactory.deploy(localNftAddress);
     await bountyModule.waitForDeployment();
     const moduleAddress = await bountyModule.getAddress();
     console.log("[Testnet Test - Module] BountyCollectModule deployed to Lens Testnet at:", moduleAddress);
@@ -88,7 +87,7 @@ describe("BountyCollectModule (Lens Testnet Deployment)", function () {
     const testNftAddress = await testNft.getAddress();
 
     const ModuleFactory = await ethers.getContractFactory("BountyCollectModule", deployer);
-    const testModule = await ModuleFactory.deploy(testNftAddress, hubPlaceholderAddress);
+    const testModule = await ModuleFactory.deploy(testNftAddress);
     await testModule.waitForDeployment();
     const testModuleAddress = await testModule.getAddress();
 

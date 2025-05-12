@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 import { Signer } from "ethers";
-import { BountyCollectModule } from "../typechain-types/contracts/BountyCollectModule";
+import { BountyCollectModule } from "../typechain-types/contracts/BountyCollectModule.sol/BountyCollectModule";
 import { AcceptedAnswerNFT } from "../typechain-types/contracts/AcceptedAnswerNFT";
 import { MockERC20 } from "../typechain-types/contracts/MockERC20";
-import { Types } from "../node_modules/lens-modules/contracts/libraries/constants/Types";
+import { Types } from "./lens-types";
 
 describe("BountyCollectModule (Integration Testnet - Happy Path)", function () {
   this.timeout(300000); // 5 minutes for all testnet interactions
@@ -28,7 +28,7 @@ describe("BountyCollectModule (Integration Testnet - Happy Path)", function () {
   const pubId = BigInt(1);     // Example Publication ID for the question
 
   before(async function () {
-    if (network.name !== "lensSepolia") {
+    if (network.name !== "lensTestnet") {
       console.log(`Not on lensSepolia network (current: ${network.name}), skipping integration tests.`);
       this.skip();
       return;
@@ -75,7 +75,7 @@ describe("BountyCollectModule (Integration Testnet - Happy Path)", function () {
 
     console.log("Deploying BountyCollectModule to Lens Testnet...");
     const ModuleFactory = await ethers.getContractFactory("BountyCollectModule", deployerAndUser);
-    bountyModule = await ModuleFactory.deploy(nftAddress, hubAddress);
+    bountyModule = await ModuleFactory.deploy(nftAddress);
     await bountyModule.waitForDeployment();
     moduleAddress = await bountyModule.getAddress();
     console.log(`BountyCollectModule deployed to: ${moduleAddress}`);
@@ -88,7 +88,7 @@ describe("BountyCollectModule (Integration Testnet - Happy Path)", function () {
   });
 
   it("Happy Path: Asker initializes bounty, then accepts an answer, paying expert and minting NFT", async function () {
-    if (network.name !== "lensSepolia") this.skip();
+    if (network.name !== "lensTestnet") this.skip();
 
     console.log("Step 1: Initializing bounty...");
     const initPublicationActionData = ethers.AbiCoder.defaultAbiCoder().encode(
