@@ -9,9 +9,10 @@
     "test": "pnpm --filter @lin/contracts run test",
     "deploy": "pnpm --filter @lin/contracts run deploy",
     "dev:node": "pnpm --filter @lin/contracts exec hardhat node --hostname 0.0.0.0",
-    "dev:deploy-local": "pnpm --filter @lin/contracts run deploy:localhost",
-    "dev:frontend-local": "cross-env NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8545/ NEXT_PUBLIC_CHAIN_ID=31337 pnpm --filter @lin/frontend dev",
-    "dev:test-local": "echo \"Run dev:node in one terminal, then dev:deploy-local in another (and update contractAddresses.ts), then dev:frontend-local in a third.\""
+    "dev:deploy-local": "pnpm exec dotenv-cli -e .env -- pnpm --filter @lin/contracts run deploy:localhost",
+    "deploy:lensSepolia": "pnpm --filter @lin/contracts run deploy:lensSepolia",
+    "test:contracts-lensSepolia": "pnpm exec dotenv-cli -e .env -- pnpm --filter @lin/contracts exec hardhat test ./test/BountyCollectModule.lensTestnet.t.ts --network lensSepolia",
+    "dev:frontend-local": "pnpm exec cross-env NEXT_PUBLIC_LENS_TESTNET_RPC_URL=https://rpc.testnet.lens.dev NEXT_PUBLIC_CHAIN_ID=37111 pnpm --filter @lin/frontend dev"
   },
   "devDependencies": {
     "@lens-protocol/client": "^2.0.0",
@@ -30,7 +31,9 @@
       "bufferutil",
       "keccak",
       "secp256k1",
-      "utf-8-validate"
+      "utf-8-validate",
+      "hardhat",
+      "@nomicfoundation/hardhat-toolbox"
     ]
   },
   "dependencies": {
