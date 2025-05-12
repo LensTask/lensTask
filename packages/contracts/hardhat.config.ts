@@ -6,10 +6,10 @@ import "@matterlabs/hardhat-zksync";
 const privateKey = process.env.PRIVATE_KEY;
 
 const accounts = privateKey && privateKey.length === 66 && privateKey.startsWith('0x')
-                 ? [privateKey]
-                 : (privateKey && privateKey.length === 64 && !privateKey.startsWith('0x')
-                    ? ['0x' + privateKey]
-                    : []);
+  ? [privateKey]
+  : (privateKey && privateKey.length === 64 && !privateKey.startsWith('0x')
+    ? ['0x' + privateKey]
+    : []);
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -17,8 +17,8 @@ const config: HardhatUserConfig = {
     settings: {
       // Remappings section entirely removed
       optimizer: {
-         enabled: true,
-         runs: 200,
+        enabled: true,
+        runs: 200,
       },
     },
   },
@@ -29,7 +29,7 @@ const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      zksync: true,
+   
     },
     lensTestnet: {
       url: 'https://rpc.testnet.lens.xyz', //process.env.RPC_URL || "",
@@ -44,6 +44,7 @@ const config: HardhatUserConfig = {
       ethNetwork: "mainnet",
     },
     localhost: {
+
       url: "http://127.0.0.1:8545",
       chainId: 31337,
     }
@@ -55,8 +56,8 @@ const config: HardhatUserConfig = {
     tests: "./test"
   },
   typechain: {
-     outDir: 'typechain-types',
-     target: 'ethers-v6',
+    outDir: 'typechain-types',
+    target: 'ethers-v6',
   },
 };
 
