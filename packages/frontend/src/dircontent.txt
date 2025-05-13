@@ -1,0 +1,1628 @@
+===== ./components/AcceptAnswerButton.tsx =====
+import { useState } from 'react';
+import { lensClient } from "@/lib/lensClient";
+import { useMutation } from "@tanstack/react-query";
+import { signTypedData, getWalletClient } from "@wagmi/core";
+import { encodeAbiParameters, parseAbiParameters, AbiParametersToPrimitiveTypes } from "viem";
+import { useConfig } from 'wagmi';
+import { bountyCollectModuleAddress, chainId as localChainId } from '@/lib/contractAddresses';
+import { ProfileId } from '@lens-protocol/client';
+
+/* ------------------------------------------------------------------ */
+/* TODO: Verify this EIP-712 struct against the Hub version you use.   */
+/* ------------------------------------------------------------------ */
+const ActionModuleEIP712Types = {
+  Action: [
+    { name: 'profileId', type: 'uint256' },
+    { name: 'pubId', type: 'uint256' },
+    { name: 'actionModule', type: 'address' },
+    { name: 'actionModuleData', type: 'bytes' },
+    { name: 'actor', type: 'address' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'deadline', type: 'uint256' },
+  ],
+} as const;
+
+export default function AcceptAnswerButton({
+  questionId,
+  expertProfileId,
+  moduleActionId,
+}: {
+  questionId: string;
+  expertProfileId: ProfileId;
+  moduleActionId: `0x${string}`;
+}) {
+  const wagmiConfig = useConfig();
+  const [statusMessage, setStatusMessage] = useState('');
+  const [signature, setSignature] = useState<string | null>(null);
+
+  /* TODO: Replace placeholders with data fetched from Lens API */
+  const askerProfileId = "0x01";
+  const askerOwnerAddress = "0x0000000000000000000000000000000000000000";
+
+  // TODO: Pull nonce from Lens instead of 0n
+  const currentNonce = BigInt(0);
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: async () => {
+      setStatusMessage('');
+      setSignature(null);
+
+      // TODO: Ensure wallet is connected via ConnectKit/Family
+      const walletClientInstance = await getWalletClient(wagmiConfig);
+      if (!walletClientInstance) throw new Error("Wallet client not found");
+
+      /* TODO: Strictly compare connected wallet with askerOwnerAddress */
+
+      // TODO: Decide final calldata shape for processAction()
+      const processActionCalldata = encodeAbiParameters(
+        parseAbiParameters('uint256 expertProfileId'),
+        [BigInt(expertProfileId)]
+      );
+
+      /* TODO: Fill correct LensHub address & domain data */
+      const typedData = {
+        domain: {
+          name: 'Lens Protocol Modules',
+          version: '1',
+          chainId: localChainId,
+          verifyingContract: '0xDb46d1Dc155634FbC734f3125bA7c2N6D8D2AD71',
+        },
+        types: ActionModuleEIP712Types,
+        primaryType: 'Action' as const,
+        message: {
+          profileId: BigInt(askerProfileId),
+          pubId: BigInt(questionId.split('-')[1] || '0'),
+          actionModule: moduleActionId,
+          actionModuleData: processActionCalldata,
+          actor: walletClientInstance.account.address,
+          nonce: currentNonce,
+          deadline: deadline,
+        },
+      };
+
+      // TODO: Move to Lens SDK broadcast after signature created
+      const sig = await signTypedData(wagmiConfig, {
+        account: walletClientInstance.account,
+        domain: typedData.domain,
+        types: typedData.types,
+        primaryType: typedData.primaryType,
+        message: typedData.message,
+      });
+
+      setSignature(sig);
+      setStatusMessage("Signature obtained! (broadcast step TODO)");
+      return { signature: sig };
+    },
+    onError: (error: Error) => {
+      const shortMessage = (error as any).shortMessage || error.message;
+      setStatusMessage(`Signing failed: ${shortMessage}`);
+    }
+  });
+
+  return (
+    <div>
+      {/* TODO: Disable button if wallet not asker */}
+      <button
+        disabled={isPending}
+        onClick={() => mutate()}
+        className="btn btn-primary"
+      >
+        {isPending ? 'Check Wallet...' : 'Accept & Pay (Sign EIP-712)'}
+      </button>
+      {signature     && <div className="text-xs mt-1 text-green-500">Signature: {signature.substring(0, 10)}...</div>}
+      {statusMessage && <div className="text-xs mt-1 text-red-500">{statusMessage}</div>}
+    </div>
+  );
+}
+===== ./components/AnswerComposer.tsx =====
+// src/components/AnswerComposer.tsx
+
+import { useState } from "react";
+// --- SPECULATIVE V3 SDK IMPORTS ---
+// Replace with actual imports from your chosen Lens V3 React SDK package
+import {
+  useCreateComment, // Hypothetical hook for creating a comment
+  PublicationId,    // V3 type for PublicationId
+  // Other types might be implicitly handled by the hook if metadata is auto-generated
+} from '@lens-protocol/react-web'; // SPECULATIVE: Replace with actual package name
+// --- END SPECULATIVE IMPORTS ---
+
+interface AnswerComposerProps {
+  parentId: PublicationId; // ID of the publication (question) being commented on
+}
+
+export default function AnswerComposer({ parentId }: AnswerComposerProps) {
+  const [text, setText] = useState("");
+  // Get the createComment mutation hook and its state
+  const {
+    execute: createComment,
+    loading: isSubmitting,
+    error: submissionError,
+    data: submissionResult, // Data returned upon successful submission
+  } = useCreateComment();
+
+
+  const [uiError, setUiError] = useState<string | null>(null);
+  const [uiSuccess, setUiSuccess] = useState<string | null>(null);
+  const activeProfile = null
+  const submitAnswer = async () => {
+    if (!activeProfile) {
+      setUiError("You must be logged in with a Lens profile to post an answer.");
+      return;
+    }
+    if (!text.trim()) {
+      setUiError("Answer cannot be empty.");
+      return;
+    }
+
+    setUiError(null);
+    setUiSuccess(null);
+
+    try {
+      // Call the `createComment` function from the hook, passing raw content.
+      // The hook is assumed to handle metadata creation & upload for simple text.
+      console.log(`[AnswerComposer] Submitting comment on ${parentId} with content: "${text.substring(0,50)}..."`);
+      const result = await createComment({
+        commentOn: parentId, // ID of the publication to comment on
+        content: text,       // Pass the raw text content directly
+        // The hook might have other optional parameters, e.g., for app ID
+        // appId: 'kintask-v1',
+        // Potentially, it might even allow specifying focus like:
+        // mainContentFocus: PublicationMetadataMainFocusType.TEXT_ONLY,
+        // Check V3 SDK docs for the exact parameters the hook supports.
+      });
+
+      console.log("[AnswerComposer] Submission result from hook:", result);
+
+      // Check the result structure from the V3 hook's documentation
+      if (result && (result.optimistic || result.txHash || result.id)) { // Speculative success check
+        setUiSuccess("Answer submitted successfully! It may take a moment to appear.");
+        setText(""); // Clear input
+        // Optionally: Trigger a refetch of comments for the parent publication
+        // e.g., if using React Query alongside: queryClient.invalidateQueries({ queryKey: ['comments', parentId] });
+      } else if (result && result.reason) { // Check for specific failure reasons
+        setUiError(`Submission failed: ${result.reason}`);
+      } else {
+        setUiError("Submission attempt finished, but success state is unclear. Please check your profile.");
+      }
+
+    } catch (err: any) {
+      console.error("[AnswerComposer] Error submitting answer:", err);
+      setUiError(err.message || "An unexpected error occurred during submission.");
+    }
+    // `isSubmitting` (loading state) is handled by the hook.
+  };
+
+
+
+  if (!activeProfile) {
+    return (
+      <div className="mt-6 border-t pt-6 dark:border-gray-700">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Please <button onClick={() => { /* TODO: Trigger login flow using V3 SDK's login hook/method */ }} className="text-kintask-blue hover:underline font-semibold">sign in with your Lens Profile</button> to post an answer.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 border-t pt-6 dark:border-gray-700">
+      <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Your Answer</h3>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-kintask-blue focus:border-kintask-blue transition-colors placeholder-gray-400 dark:placeholder-gray-500"
+        rows={5}
+        placeholder={`Replying as @${activeProfile.handle?.fullHandle || activeProfile.id}... Type your insightful answer here.`}
+        disabled={isSubmitting}
+        aria-label="Your answer content"
+      />
+
+      {(uiError || submissionError) && (
+        <p className="text-red-600 dark:text-red-400 text-sm mt-2">
+          {uiError || submissionError?.message}
+        </p>
+      )}
+      {uiSuccess && !submissionError && (
+        <p className="text-green-600 dark:text-green-400 text-sm mt-2">{uiSuccess}</p>
+      )}
+
+      <button
+        onClick={submitAnswer}
+        className="mt-4 px-6 py-2 bg-kintask-blue hover:bg-kintask-blue-dark text-white font-medium rounded-md disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-kintask-blue focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-opacity"
+        disabled={isSubmitting || !text.trim() || !activeProfile}
+      >
+        {isSubmitting ? "Submitting Answer..." : "Post Answer"}
+      </button>
+    </div>
+  );
+}===== ./components/Navbar.module.css =====
+.navbar {
+    background-color: #2c3e50; /* Darker blue-gray */
+    color: white;
+    padding: 1rem 1.5rem; /* More padding */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    position: relative; /* For absolute positioning of mobile menu */
+    z-index: 100; /* Ensure navbar is on top */
+  }
+  
+  .logo a {
+    color: #ecf0f1; /* Lighter text for logo */
+    text-decoration: none;
+    font-size: 1.8rem; /* Larger logo */
+    font-weight: bold;
+    transition: color 0.2s ease-in-out;
+  }
+  .logo a:hover {
+    color: #3498db; /* Highlight color on hover */
+  }
+  
+  .menuLinks {
+    list-style: none;
+    display: flex;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .menuLinks li {
+    margin-left: 1.8rem; /* More space between items */
+  }
+  
+  .menuLinks a {
+    color: #bdc3c7; /* Slightly muted link color */
+    text-decoration: none;
+    padding: 0.6rem 0.8rem; /* More padding for links */
+    border-radius: 5px;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+    font-weight: 500;
+  }
+  
+  .menuLinks a:hover {
+    background-color: #34495e; /* Darker background on hover */
+    color: #ecf0f1; /* Lighter text on hover */
+  }
+  .menuLinks a.activeLink {
+    background-color: #3498db; /* Active link highlight */
+    color: white;
+    font-weight: bold;
+  }
+  
+  .hamburger {
+    display: none;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    flex-direction: column;
+    gap: 5px; /* Increased gap */
+    padding: 8px;
+  }
+  
+  .hamburgerLine {
+    display: block;
+    width: 28px; /* Slightly wider lines */
+    height: 3px;
+    background-color: white;
+    border-radius: 3px;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+  
+  /* Animation for hamburger to X */
+  .hamburger[aria-expanded="true"] .hamburgerLine:nth-child(1) {
+      transform: translateY(8px) rotate(45deg);
+  }
+  .hamburger[aria-expanded="true"] .hamburgerLine:nth-child(2) {
+      opacity: 0;
+  }
+  .hamburger[aria-expanded="true"] .hamburgerLine:nth-child(3) {
+      transform: translateY(-8px) rotate(-45deg);
+  }
+  
+  
+  /* Mobile Styles */
+  @media (max-width: 768px) {
+    .hamburger {
+      display: flex;
+    }
+  
+    .menuLinks {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+      position: absolute;
+      top: 100%; /* Position below the navbar */
+      left: 0;
+      background-color: #2c3e50; /* Same as navbar */
+      padding: 1rem 0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border-top: 1px solid #34495e;
+    }
+  
+    .menuLinks.open {
+      display: flex;
+    }
+  
+    .menuLinks li {
+      margin: 0; /* Remove left margin */
+      width: 100%;
+      text-align: center;
+    }
+    .menuLinks li a {
+      display: block; /* Make links take full width */
+      padding: 1rem; /* Larger touch targets */
+      border-bottom: 1px solid #34495e33; /* Separator */
+    }
+    .menuLinks li:last-child a {
+      border-bottom: none;
+    }
+    .menuLinks a:hover,
+    .menuLinks a.activeLink {
+      background-color: #3498db;
+      color: white;
+    }
+  }===== ./components/Navbar.tsx =====
+'use client';
+
+import Link from 'next/link';
+import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+
+const menuItems = [
+  { label: 'Home', href: '/' },
+  { label: 'About', href: '/about' },
+  { label: 'Ask', href: '/ask' },
+
+  // ... other items
+];
+
+export default function Navbar() {
+  const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+
+  return (
+    <nav className="bg-gray-800 text-white p-4">
+      <div className="container mx-auto flex justify-between items-center">
+        <Link href="/" className="text-xl font-bold">
+          MyLogo
+        </Link>
+
+        {/* Hamburger for Mobile */}
+        <div className="md:hidden">
+          <button onClick={() => setIsOpen(!isOpen)} aria-label="Toggle menu">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16m-7 6h7"}></path>
+            </svg>
+          </button>
+        </div>
+
+        {/* Desktop Menu */}
+        <ul className="hidden md:flex space-x-4">
+          {menuItems.map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className={`hover:bg-gray-700 px-3 py-2 rounded ${
+                  pathname === item.href ? 'bg-gray-900' : ''
+                }`}
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Mobile Menu (conditionally rendered) */}
+      {isOpen && (
+        <div className="md:hidden mt-2">
+          <ul className="flex flex-col space-y-2">
+            {menuItems.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={() => setIsOpen(false)}
+                  className={`block hover:bg-gray-700 px-3 py-2 rounded ${
+                    pathname === item.href ? 'bg-gray-900' : ''
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </nav>
+  );
+}===== ./components/ProfileView.tsx =====
+// components/ProfileView.tsx
+import React from 'react';
+import { ProfileFragment } from '@lens-protocol/client';
+import { normalizeImageUrl } from '@/lib/utils';
+
+interface ProfileViewProps {
+  profile: ProfileFragment;
+}
+
+const ProfileView: React.FC<ProfileViewProps> = ({ profile }) => {
+  const coverPictureUrl = normalizeImageUrl(
+    profile.metadata?.coverPicture?.__typename === 'ImageSet'
+      ? profile.metadata.coverPicture.optimized?.uri
+      : undefined
+  );
+  const profilePictureUrl = normalizeImageUrl(
+    profile.metadata?.picture?.__typename === 'ImageSet'
+      ? profile.metadata.picture.optimized?.uri
+      : profile.metadata?.picture?.__typename === 'NftImage'
+        ? profile.metadata.picture.uri
+        : undefined
+  );
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      {/* Cover Image */}
+      <div className="bg-gray-200 dark:bg-gray-700 h-48 md:h-64 rounded-t-lg overflow-hidden relative">
+        {coverPictureUrl && (
+          <img src={coverPictureUrl} alt="Cover" className="w-full h-full object-cover" />
+        )}
+        {!coverPictureUrl && <div className="w-full h-full bg-gray-300 dark:bg-gray-600"></div>}
+      </div>
+
+      {/* Profile Header */}
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-b-lg p-6 relative border border-t-0 dark:border-gray-700">
+        <div className="flex flex-col items-center sm:flex-row sm:items-end -mt-20 sm:-mt-24">
+          {/* Profile Picture */}
+          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white dark:border-gray-800 overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
+            {profilePictureUrl ? (
+              <img src={profilePictureUrl} alt={profile.metadata?.displayName || profile.handle?.fullHandle} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400 text-4xl font-semibold">
+                {profile.handle?.fullHandle.substring(0, 1).toUpperCase()}
+              </div>
+            )}
+          </div>
+
+          {/* Profile Info */}
+          <div className="mt-4 sm:mt-0 sm:ml-6 text-center sm:text-left w-full">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white break-words">
+              {profile.metadata?.displayName || profile.handle?.fullHandle}
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              @{profile.handle?.fullHandle} <span className="mx-1">·</span> {profile.id}
+            </p>
+            {profile.metadata?.bio && (
+              <p className="text-gray-700 dark:text-gray-300 mt-2 text-sm whitespace-pre-line break-words">
+                {profile.metadata.bio}
+              </p>
+            )}
+            {/* Optional: Follow Button / Actions */}
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-around text-center">
+          <div>
+            <p className="text-xl font-semibold text-gray-800 dark:text-gray-100">{profile.stats?.posts ?? 0}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Posts</p>
+          </div>
+          <div>
+            <p className="text-xl font-semibold text-gray-800 dark:text-gray-100">{profile.stats?.followers ?? 0}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Followers</p>
+          </div>
+          <div>
+            <p className="text-xl font-semibold text-gray-800 dark:text-gray-100">{profile.stats?.following ?? 0}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Following</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ProfileView;===== ./components/PublicationCard.tsx =====
+// components/PublicationCard.tsx
+import React from 'react';
+import { PostFragment } from '@lens-protocol/client'; // Assuming you narrow down type or use a broader one
+import { normalizeImageUrl } from '@/lib/utils';
+
+interface PublicationCardProps {
+  // The PublicationFragment is broad; ideally, you'd work with PostFragment for posts
+  publication: PostFragment; // Or a more generic Publication type if handling comments/mirrors too
+}
+
+const PublicationCard: React.FC<PublicationCardProps> = ({ publication }) => {
+  // --- Content Rendering Logic ---
+  let title: string | undefined;
+  let content: string | undefined;
+  let mainImage: string | undefined;
+
+  if (publication.metadata) {
+    switch (publication.metadata.__typename) {
+      case 'ArticleMetadataV3':
+        title = publication.metadata.title;
+        content = publication.metadata.content.substring(0, 300) + (publication.metadata.content.length > 300 ? '...' : ''); // Truncate for card
+        break;
+      case 'TextOnlyMetadataV3':
+        content = publication.metadata.content.substring(0, 300) + (publication.metadata.content.length > 300 ? '...' : '');
+        break;
+      case 'ImageMetadataV3':
+        title = publication.metadata.title;
+        content = publication.metadata.content?.substring(0, 150) + (publication.metadata.content && publication.metadata.content.length > 150 ? '...' : '');
+        if (publication.metadata.asset.image?.optimized?.uri) {
+            mainImage = normalizeImageUrl(publication.metadata.asset.image.optimized.uri);
+        }
+        break;
+      // TODO: Add cases for VideoMetadataV3, AudioMetadataV3, LinkMetadataV3, etc.
+      default:
+        content = publication.metadata.content.substring(0, 300) + (publication.metadata.content.length > 300 ? '...' : '');
+    }
+  } else {
+    content = "Metadata not available for this publication.";
+  }
+
+  const profilePic = normalizeImageUrl(
+    publication.by?.metadata?.picture?.__typename === 'ImageSet' ? publication.by.metadata.picture.optimized?.uri :
+    publication.by?.metadata?.picture?.__typename === 'NftImage' ? publication.by.metadata.picture.uri : undefined
+  );
+
+
+  return (
+    <article className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 sm:p-6 border dark:border-gray-700">
+      <div className="flex items-start space-x-3 mb-3">
+        {profilePic && (
+            <img src={profilePic} alt={publication.by.handle?.fullHandle} className="w-10 h-10 rounded-full object-cover" />
+        )}
+        {!profilePic && (
+            <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-500">
+                {publication.by.handle?.fullHandle.substring(0,1).toUpperCase()}
+            </div>
+        )}
+        <div>
+          <p className="font-semibold text-sm text-gray-900 dark:text-white">{publication.by.metadata?.displayName || publication.by.handle?.fullHandle}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            @{publication.by.handle?.fullHandle} · {new Date(publication.createdAt).toLocaleDateString()}
+          </p>
+        </div>
+      </div>
+
+      {title && <h3 className="font-semibold text-lg mb-2 text-gray-800 dark:text-gray-100 break-words">{title}</h3>}
+      {mainImage && <img src={mainImage} alt={title || 'Publication image'} className="rounded-md mb-2 max-h-96 w-full object-contain" />}
+      <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-line break-words">{content}</p>
+
+      {/* TODO: Add Publication Stats (comments, mirrors, reactions, collects) */}
+      <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 flex space-x-4 text-xs text-gray-500 dark:text-gray-400">
+        <span>{publication.stats?.comments ?? 0} Comments</span>
+        <span>{publication.stats?.mirrors ?? 0} Mirrors</span>
+        <span>{publication.stats?.upvotes ?? 0} Upvotes</span> {/* upvotes: reactions(request: {type: UPVOTE}) */}
+        <span>{publication.stats?.collects ?? 0} Collects</span>
+      </div>
+    </article>
+  );
+};
+
+export default PublicationCard;===== ./components/QuestionCard.tsx =====
+import { PublicationFragment, ProfileFragment } from '@lens-protocol/client';
+import Link from 'next/link';
+import { ChatBubbleOvalLeftEllipsisIcon, ArrowUpCircleIcon, EyeIcon } from '@heroicons/react/24/outline'; // Using Heroicons
+
+// Helper to get a displayable image URL from Lens MediaSet
+const getProfilePictureUrl = (profile: ProfileFragment): string | null => {
+  if (profile.picture && profile.picture.__typename === 'MediaSet') {
+    return profile.picture.optimized?.uri || profile.picture.original?.uri || null;
+  }
+  if (profile.picture && profile.picture.__typename === 'NftImage') {
+    return profile.picture.image.optimized?.uri || profile.picture.image.original?.uri || null;
+  }
+  return '/default-avatar.png'; // Fallback placeholder
+};
+
+interface QuestionCardProps {
+  pub: PublicationFragment; // Assuming PostFragment is compatible or you adjust
+}
+
+const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
+  if (pub.__typename !== 'Post' && pub.__typename !== 'Comment' && pub.__typename !== 'Mirror' && pub.__typename !== 'Quote') {
+    // Or handle other types if necessary. For now, only render Post-like content.
+    return null;
+  }
+
+  const profile = pub.by;
+  const metadata = pub.metadata;
+  const stats = pub.stats;
+
+  const profilePictureUrl = getProfilePictureUrl(profile);
+
+  // Extract title and content more robustly
+  let title = "Untitled Question";
+  let contentSnippet = "No content available.";
+
+  if (metadata && metadata.__typename === 'TextOnlyMetadataV3') {
+    // For TextOnly, content is the main field. Let's treat it as the question.
+    title = metadata.content.length > 100 ? metadata.content.substring(0, 97) + "..." : metadata.content;
+    contentSnippet = metadata.content; // Or a snippet if you prefer
+  } else if (metadata && metadata.__typename === 'ArticleMetadataV3') {
+    title = metadata.title || "Untitled Question";
+    contentSnippet = metadata.content.length > 150 ? metadata.content.substring(0, 147) + "..." : metadata.content;
+  }
+  // Add more metadata type checks as needed (e.g., LinkMetadataV3, ImageMetadataV3 etc.)
+
+  const tags = metadata?.__typename.endsWith('V3') && 'tags' in metadata ? metadata.tags : [];
+
+  return (
+    <div className="bg-white dark:bg-slate-800 shadow-lg rounded-lg p-6 mb-6 hover:shadow-xl transition-shadow duration-300">
+      <div className="flex items-start space-x-4 mb-4">
+        <img
+          src={profilePictureUrl || '/default-avatar.png'} // Fallback avatar
+          alt={profile.handle?.fullHandle || 'User avatar'}
+          className="w-12 h-12 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700"
+        />
+        <div>
+          <Link href={`/profile/${profile.handle?.fullHandle || profile.id}`} className="text-lg font-semibold text-sky-600 dark:text-sky-400 hover:underline">
+            {title}
+          </Link>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Asked by{' '}
+            <Link href={`/profile/${profile.handle?.fullHandle || profile.id}`} className="font-medium hover:underline">
+              {profile.handle?.fullHandle || `ID: ${profile.id.substring(0,10)}...`}
+            </Link>
+            {' on '}
+            {new Date(pub.createdAt).toLocaleDateString()}
+          </p>
+        </div>
+      </div>
+
+      {/* Optional: Display content snippet if different from title */}
+      {/* <p className="text-slate-700 dark:text-slate-300 mb-4 leading-relaxed">
+        {contentSnippet}
+      </p> */}
+
+      {tags && tags.length > 0 && (
+        <div className="mb-4">
+          {tags.map((tag, index) => (
+            <span
+              key={index}
+              className="inline-block bg-slate-200 dark:bg-slate-700 rounded-full px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 mr-2 mb-2"
+            >
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-4">
+        <div className="flex items-center space-x-4">
+          <span className="flex items-center">
+            <ArrowUpCircleIcon className="w-5 h-5 mr-1 text-green-500" /> {stats?.upvotes || 0} Upvotes
+          </span>
+          <span className="flex items-center">
+            <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5 mr-1 text-blue-500" /> {stats?.comments || 0} Answers
+          </span>
+        </div>
+        <Link href={`/question/${pub.id}`} className="text-sky-600 dark:text-sky-400 hover:underline font-medium">
+          View Details
+        </Link>
+      </div>
+    </div>
+  );
+};
+
+export default QuestionCard;===== ./components/QuestionCardSkeleton.tsx =====
+const QuestionCardSkeleton: React.FC = () => {
+  return (
+    <div className="bg-white dark:bg-slate-800 shadow-lg rounded-lg p-6 mb-6 animate-pulse">
+      <div className="flex items-start space-x-4 mb-4">
+        <div className="w-12 h-12 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-slate-300 dark:bg-slate-700 rounded w-3/4"></div>
+          <div className="h-3 bg-slate-300 dark:bg-slate-700 rounded w-1/2"></div>
+        </div>
+      </div>
+
+      <div className="h-3 bg-slate-300 dark:bg-slate-700 rounded w-full mb-2"></div>
+      <div className="h-3 bg-slate-300 dark:bg-slate-700 rounded w-5/6 mb-4"></div>
+
+      <div className="flex space-x-2 mb-4">
+        <div className="h-5 w-16 bg-slate-300 dark:bg-slate-700 rounded-full"></div>
+        <div className="h-5 w-20 bg-slate-300 dark:bg-slate-700 rounded-full"></div>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-600 pt-4">
+        <div className="flex items-center space-x-4">
+          <div className="h-4 w-20 bg-slate-300 dark:bg-slate-700 rounded"></div>
+          <div className="h-4 w-20 bg-slate-300 dark:bg-slate-700 rounded"></div>
+        </div>
+        <div className="h-4 w-24 bg-slate-300 dark:bg-slate-700 rounded"></div>
+      </div>
+    </div>
+  );
+};
+
+export default QuestionCardSkeleton;===== ./components/ReputationBadge.tsx =====
+export default function ReputationBadge({ level }: { level: number }) {
+  /* TODO: swap for Bonsai dynamic NFT image once template is live */
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-white bg-purple-600 px-2 py-0.5 rounded">
+      🛡️ Level {level}
+    </span>
+  );
+}
+===== ./components/SimplePostCreator.tsx =====
+// components/SimplePostCreator.tsx
+import { useState } from 'react';
+import { useSession, useCreatePost } from '@lens-protocol/react-web';
+import { textOnly } from '@lens-protocol/metadata';
+import { uploadToIpfs } from '@lens-protocol/storage-ipfs';
+
+const APP_ID = 'lin-intel-v3-test';
+
+export default function SimplePostCreator() {
+  const [content, setContent] = useState('');
+  const [feedback, setFeedback] = useState<string|null>(null);
+
+  // Get your logged-in profile from session
+  const { data: session } = useSession();
+  const profile = session?.profile;
+
+  // Post hook
+  const { execute, isPending, error } = useCreatePost();
+
+  const handlePost = async () => {
+    if (!profile) {
+      setFeedback('⚠️ Please log in first.');
+      return;
+    }
+    if (!content.trim()) {
+      setFeedback('⚠️ Post cannot be empty.');
+      return;
+    }
+
+    setFeedback('Uploading…');
+    try {
+      // 1) Create metadata
+      const meta = textOnly({ content, appId: APP_ID });
+      // 2) Upload to IPFS
+      const uri = await uploadToIpfs(meta);
+      // 3) Execute post
+      const result = await execute({ metadata: uri });
+
+      if (result.isSuccess()) {
+        setFeedback('✅ Post submitted!');
+        setContent('');
+      } else {
+        setFeedback(`❌ ${result.error.message}`);
+      }
+    } catch (e: any) {
+      setFeedback(`❌ ${e.message}`);
+    }
+  };
+
+  return (
+    <div className="border p-4 rounded">
+      <h2 className="font-semibold mb-2">Create a Post</h2>
+      <textarea
+        className="w-full border p-2 mb-2"
+        rows={4}
+        placeholder="What's on your mind?"
+        value={content}
+        onChange={e => setContent(e.target.value)}
+        disabled={isPending}
+      />
+      {feedback && <p className="mb-2">{feedback}</p>}
+      <button
+        onClick={handlePost}
+        disabled={isPending || !content.trim()}
+        className="px-4 py-2 bg-green-600 text-white rounded"
+      >
+        {isPending ? 'Posting…' : 'Post'}
+      </button>
+      {error && <p className="text-red-500 mt-2">{error.message}</p>}
+    </div>
+  );
+}
+===== ./dircontent.txt =====
+===== ./lib/contractAddresses.ts =====
+// Update these with addresses from your local deployment AFTER running dev:deploy-local
+export const bountyCollectModuleAddress = "0x0000000000000000000000000000000000000000";
+export const acceptedAnswerNFTAddress = "0x0000000000000000000000000000000000000000";
+export const chainId = 31337; // Hardhat local node
+===== ./lib/graphql.ts =====
+import request from "graphql-request";
+
+const isDevelopment = process.env.NODE_ENV === 'development';
+const prodEndpoint = "https://api-v2.lens.dev/graphql";
+const devEndpoint = "/api/lens/graphql"; // Path for the Next.js rewrite
+
+const endpoint = isDevelopment ? devEndpoint : prodEndpoint;
+
+export function gql<T>(query: string, variables?: Record<string, any>) {
+  return request<T>(endpoint, query, variables);
+}
+===== ./lib/utils.ts =====
+// lib/utils.ts
+export const normalizeImageUrl = (uri?: string): string | undefined => {
+    if (!uri) return undefined;
+    if (uri.startsWith('ipfs://')) {
+        const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY || 'https://ipfs.io/ipfs/';
+        return `${gateway}${uri.substring(7)}`;
+    }
+    return uri;
+};===== ./lib/wagmi.ts =====
+import { createConfig, http } from 'wagmi';
+// For LensProvider V3, the primary chain is Lens Chain Sepolia (37111).
+// WagmiProvider should at least include this chain.
+// Other chains like localhost can be kept for local contract testing if separate.
+import { sepolia, localhost } from 'wagmi/chains'; // Using sepolia as an example general chain
+
+// Define Lens Chain Sepolia for Wagmi
+const lensChainSepolia = {
+  id: 37111,
+  name: 'Lens Chain Sepolia',
+  nativeCurrency: { name: 'GRASS', symbol: 'GRASS', decimals: 18 },
+  rpcUrls: {
+    default: { http: [process.env.NEXT_PUBLIC_LENS_TESTNET_RPC_URL || 'https://rpc.testnet.lens.dev'] },
+    public: { http: [process.env.NEXT_PUBLIC_LENS_TESTNET_RPC_URL || 'https://rpc.testnet.lens.dev'] },
+  },
+  blockExplorers: {
+    default: { name: 'LensScan', url: 'https://explorer.testnet.lens.dev' },
+  },
+  testnet: true,
+};
+
+export const wagmiConfig = createConfig({
+  // chains should ideally include the chain LensProvider's environment targets
+  chains: [lensChainSepolia, localhost],
+  transports: {
+    [lensChainSepolia.id]: http(lensChainSepolia.rpcUrls.default.http[0]),
+    [localhost.id]: http(), // For local hardhat node
+  },
+  // ssr: true, // Optional, often handled by providers
+});
+===== ./lib/xmtp.ts =====
+import { Client } from "@xmtp/xmtp-js";
+import { getWalletClient } from "@wagmi/core";
+
+export async function getXmtpClient() {
+  const wallet = await getWalletClient();
+  return Client.create(wallet, { env: "production" });
+}
+===== ./pages/ask.tsx =====
+'use client'; // If using App Router, this page likely needs to be a client component for useState and onClick
+
+import { useState } from "react";
+import { lensClient } from "@/lib/lensClient"; // Assuming this is correctly set up
+import { InformationCircleIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'; // For feedback
+
+export default function AskPage() {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [tags, setTags] = useState(""); // Optional: for comma-separated tags
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Simple character limit for demonstration
+  const MAX_BODY_LENGTH = 1000;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); // Prevent default form submission
+    setError(null);
+    setSuccess(null);
+
+    if (!title.trim() || !body.trim()) {
+      setError("Please provide both a title and a question body.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // TODO: Implement proper metadata construction
+      // This is a placeholder for the actual metadata you'll build
+      const metadata = {
+        version: '2.0.0', // Example Lens metadata version
+        metadata_id: `question-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
+        description: `Question: ${title}`, // Or use body for description
+        content: body, // The main question content
+        name: title, // Title of the post
+        attributes: [
+          {
+            traitType: 'type',
+            value: 'question',
+          },
+          // Add more attributes, e.g., for bounty if implemented
+        ],
+        // external_url: 'YOUR_APP_URL/question/ID_HERE', // Link back to your app
+        // image: 'URL_TO_AN_IMAGE_IF_ANY',
+        // app_id: 'YOUR_LENS_APP_ID', // Your Lens app ID
+        tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag), // Process tags
+        // locale: 'en-US', // Example
+      };
+
+      console.log("Submitting with metadata:", metadata);
+
+      // IMPORTANT: Replace with actual lensClient.publication.postOnchain call
+      // For now, simulating an API call
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+      // const result = await lensClient.publication.postOnchain({
+      //   contentURI: `data:application/json,${JSON.stringify(metadata)}`,
+      //   // ... other necessary parameters for postOnchain (e.g., profileId if needed)
+      //   // ... openActionModules for bounty if you implement that
+      // });
+      // console.log("Publication result:", result);
+
+      setSuccess("Your question has been submitted successfully!");
+      setTitle("");
+      setBody("");
+      setTags("");
+    } catch (err: any) {
+      console.error("Error submitting question:", err);
+      setError(err.message || "An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 sm:py-12">
+      <section className="max-w-2xl mx-auto bg-white dark:bg-slate-800 shadow-xl rounded-lg p-6 sm:p-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white mb-6 text-center">
+          Ask a Public Question
+        </h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 text-center">
+          Your question will be posted onchain. Be clear and concise.
+          {/* TODO: Add link to guidelines or more info here */}
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Question Title
+            </label>
+            <input
+              type="text"
+              id="title"
+              name="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., How to integrate WalletConnect with Next.js?"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 dark:bg-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500"
+              disabled={isLoading}
+              maxLength={150} // Example max length
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              A short, descriptive title for your question.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="body" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Your Question
+            </label>
+            <textarea
+              id="body"
+              name="body"
+              rows={8}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Describe your question in detail. Include any relevant context, code snippets, or what you've already tried."
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 dark:bg-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500"
+              disabled={isLoading}
+              maxLength={MAX_BODY_LENGTH}
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 text-right">
+              {body.length}/{MAX_BODY_LENGTH} characters
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="tags" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Tags (Optional)
+            </label>
+            <input
+              type="text"
+              id="tags"
+              name="tags"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="e.g., nextjs, web3, lens-protocol"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 dark:bg-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500"
+              disabled={isLoading}
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Comma-separated tags to help categorize your question.
+            </p>
+          </div>
+
+          {/* TODO: Add Bounty Module configuration UI here if needed */}
+          {/* <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+            <h2 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-3">Set a Bounty (Optional)</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+              (Bounty module integration needed)
+            </p>
+             Inputs for bounty amount, currency, etc.
+          </div> */}
+
+
+          {/* Feedback Messages */}
+          {error && (
+            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-md text-sm text-red-700 dark:text-red-300 flex items-start">
+              <ExclamationTriangleIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+          {success && (
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-md text-sm text-green-700 dark:text-green-300 flex items-start">
+              <CheckCircleIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+              <span>{success}</span>
+            </div>
+          )}
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={!title.trim() || !body.trim() || isLoading}
+              className="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:bg-slate-400 dark:disabled:bg-slate-500 disabled:text-slate-700 dark:disabled:text-slate-400 disabled:cursor-not-allowed transition-colors duration-150"
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Submitting...
+                </>
+              ) : (
+                "Submit Question"
+              )}
+            </button>
+          </div>
+        </form>
+
+        <div className="mt-8 border-t border-slate-200 dark:border-slate-700 pt-6">
+          <div className="flex items-start p-3 bg-sky-50 dark:bg-sky-900/50 border border-sky-200 dark:border-sky-700 rounded-md">
+            <InformationCircleIcon className="h-6 w-6 text-sky-600 dark:text-sky-400 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-medium text-sky-700 dark:text-sky-300">Remember:</h3>
+              <ul className="list-disc list-inside text-xs text-slate-600 dark:text-slate-400 mt-1 space-y-1">
+                <li>Clearly articulate your problem or question.</li>
+                <li>Provide context or examples if applicable.</li>
+                <li>Check if a similar question has already been asked.</li>
+                <li>Your post is permanent on the blockchain.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  );
+}===== ./pages/index.tsx =====
+import { NextPage } from "next";
+import Link from 'next/link';
+// Import hooks and types from @lens-protocol/react-web for V3
+import {
+  useExplorePublications,
+  ExplorePublicationType,
+  ExplorePublicationsOrderByType,
+  LimitType // Assuming LimitType is also exported here or from @lens-protocol/client
+} from '@lens-protocol/react-web';
+// Import types from @lens-protocol/client for data structure (PostFragment)
+import { PostFragment } from '@lens-protocol/client';
+
+import QuestionCard from "@/components/QuestionCard";
+import QuestionCardSkeleton from "@/components/QuestionCardSkeleton";
+import { InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
+
+const Home: NextPage = () => {
+  const { data: publications, error, loading: isLoading } = useExplorePublications({
+    limit: LimitType.TwentyFive, // V3 SDK uses Enums like this
+    orderBy: ExplorePublicationsOrderByType.Latest,
+    where: {
+      publicationTypes: [ExplorePublicationType.Post],
+      // metadata: { // Optional: Filter for your app's questions
+      //   tags: { oneOf: ["lin-question-app"] } // Use your appId or a specific tag
+      // }
+    }
+  });
+
+  console.log("useExplorePublications data:", publications);
+  console.log("useExplorePublications error:", error);
+  console.log("useExplorePublications isLoading:", isLoading);
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center mb-8">
+          <div className="text-center flex-grow">
+            <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white sm:text-5xl tracking-tight">
+              Latest Questions (Lens V3)
+            </h1>
+            <p className="mt-3 text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
+              Explore the latest discussions and insights from the community.
+            </p>
+          </div>
+          <Link href="/ask" legacyBehavior>
+            <a className="ml-4 flex-shrink-0 btn btn-primary bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+              Ask Question
+            </a>
+          </Link>
+        </div>
+
+        {isLoading && (!publications || publications.length === 0) && (
+          <div className="space-y-6">
+            {[...Array(5)].map((_, i) => (
+              <QuestionCardSkeleton key={i} />
+            ))}
+          </div>
+        )}
+
+        {error && !isLoading && (
+          <div className="bg-red-100 dark:bg-red-900 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-md shadow-md" role="alert">
+            <div className="flex">
+              <div className="py-1">
+                <ExclamationTriangleIcon className="h-6 w-6 text-red-500 dark:text-red-400 mr-3" />
+              </div>
+              <div>
+                <p className="font-bold">Error Loading Questions</p>
+                <p className="text-sm">{error.message}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isLoading && !error && publications && publications.length === 0 && (
+          <div className="bg-sky-100 dark:bg-sky-900 border-l-4 border-sky-500 text-sky-700 dark:text-sky-300 p-4 rounded-md shadow-md" role="alert">
+            <div className="flex">
+              <div className="py-1">
+                <InformationCircleIcon className="h-6 w-6 text-sky-500 dark:text-sky-400 mr-3" />
+              </div>
+              <div>
+                <p className="font-bold">No Questions Yet</p>
+                <p className="text-sm">It looks like there are no questions matching the criteria. Why not ask one?</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isLoading && publications && publications.length > 0 && (
+          <div className="space-y-6">
+            {publications.map((p) => (
+              // Cast 'p' to PostFragment as QuestionCard might expect specific fields
+              <QuestionCard key={p.id} pub={p as PostFragment} />
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default Home;
+===== ./pages/profile/lens/[handle].tsx =====
+// src/pages/profile/[handle].tsx
+// OR pages/profile/[handle].tsx
+
+import React from 'react';
+import { useRouter } from 'next/router';
+import Link from 'next/link'; // For Next.js navigation
+// --- LENS V3 REACT SDK IMPORTS ---
+// Ensure these imports match your installed V3 SDK package exactly
+import {
+  profileId,
+  useProfile,
+  usePublications,
+  Post,           // V3 type for a Post
+  PublicationType,       // Example enum for types
+  LimitType,           // V3 type for limits, or use numbers
+} from '@lens-protocol/react-web'; // SPECULATIVE: Replace with actual package name
+// --- END LENS V3 IMPORTS ---
+import { PostFragment } from '@lens-protocol/client';
+
+import ProfileView from '../../../components/ProfileView';       // Adjust path
+import PublicationCard from '../../../components/PublicationCard';   // Adjust path
+import { InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid'; // For nice error/info messages
+
+const ProfilePage: React.FC = () => {
+  const router = useRouter();
+  const { query } = router;
+
+  // 1. Get the raw handle from the URL query
+  const rawHandleFromQuery = Array.isArray(query.handle) ? query.handle[0] : query.handle;
+
+  // 2. Prepare the handle for the `useProfile` hook
+  // The hook likely expects the full namespaced handle, e.g., "lens/stani" or "test/stani"
+  // The URL might provide "stani.lens" or "stani.test"
+  let apiFormattedProfileHandle: string | undefined = undefined;
+  if (rawHandleFromQuery) {
+    const parts = rawHandleFromQuery.split('.');
+    if (parts.length === 2) { // e.g., "stani.lens" or "dave.test"
+      apiFormattedProfileHandle = `${parts[1]}/${parts[0]}`; // -> "lens/stani" or "test/dave"
+    } else if (parts.length === 1) {
+      // If only "stani" is in URL, assume default namespace (e.g., "lens")
+      // This might be too assumptive; better if URL always has full "name.namespace"
+      console.warn(`[ProfilePage] Handle "${rawHandleFromQuery}" from URL is only localname. Assuming default namespace 'lens'.`);
+      apiFormattedProfileHandle = `lens/${rawHandleFromQuery}`; // e.g. "lens/stani"
+    } else {
+      console.error(`[ProfilePage] Invalid handle format from URL: "${rawHandleFromQuery}"`);
+      // apiFormattedProfileHandle remains undefined, hook won't run or will error
+    }
+  }
+  // --- Fetch the Specific Profile using Lens V3 `useProfile` Hook ---
+  const {
+    data: profileData,
+    loading: isLoadingProfile,
+    error: profileError,
+  } = useProfile({
+    forHandle: apiFormattedProfileHandle, // Pass the correctly formatted handle
+  });
+
+  // --- Fetch Profile's Publications using Lens V3 `usePublications` Hook ---
+  const profileIdForPublications = profileData?.id; // Get ID from successfully fetched profile
+
+  const {
+    data: publicationsPaginator, // The hook likely returns a paginator object
+    loading: isLoadingPublications,
+    error: publicationsError,
+    hasMore: hasMorePublications,
+    next: fetchNextPublications,
+  } = usePublications({
+    limit: LimitType.Ten, 
+    where: {
+      publicationTypes: [PublicationType.Post],
+      from: [profileId(profileIdForPublications)], 
+    }
+  });
+  console.log(publicationsPaginator)
+  // Extract actual publication items from the paginator
+  const postsToDisplay: Post[] = (publicationsPaginator || []) as Post[];
+
+
+  // --- Render Logic ---
+  if (isLoadingProfile && !profileData) {
+    return <div className="flex justify-center items-center min-h-screen"><p className="p-4 text-gray-500 dark:text-gray-400 animate-pulse">Loading profile for "{rawHandleFromQuery || 'profile'}"...</p></div>;
+  }
+
+  if (profileError && !profileData) {
+    return (
+      <main className="max-w-3xl mx-auto p-4 text-center">
+         <Link href="/" legacyBehavior>
+            <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
+             ← Back to Explore
+            </a>
+         </Link>
+        <div className="bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-6 rounded-md shadow-lg mt-10" role="alert">
+          <div className="flex">
+            <div className="py-1"><ExclamationTriangleIcon className="h-8 w-8 text-red-500 dark:text-red-400 mr-4" /></div>
+            <div>
+              <p className="font-bold text-lg">Error Loading Profile</p>
+              <p className="text-sm mt-1">
+                Could not load profile for "{rawHandleFromQuery}".<br />
+                Details: {profileError.message}
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!profileData) { // Hook finished, no error, but no profile data (e.g., profile not found)
+    return (
+        <main className="max-w-3xl mx-auto p-4 text-center">
+           <Link href="/explore" legacyBehavior>
+             <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
+                ← Back to Explore
+             </a>
+           </Link>
+           <div className="bg-sky-100 dark:bg-sky-900/50 border-l-4 border-sky-500 text-sky-700 dark:text-sky-300 p-6 rounded-md shadow-lg mt-10" role="alert">
+             <div className="flex">
+               <div className="py-1"><InformationCircleIcon className="h-8 w-8 text-sky-500 dark:text-sky-400 mr-4" /></div>
+               <div>
+                 <p className="font-bold text-lg">Profile Not Found</p>
+                 <p className="text-sm mt-1">The profile "@{rawHandleFromQuery}" could not be found on Lens Protocol.</p>
+               </div>
+             </div>
+           </div>
+        </main>
+    );
+  }
+
+  // --- Profile Display ---
+  return (
+    <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+      <Link href="/" legacyBehavior>
+          <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
+            ← Back to Explore
+          </a>
+      </Link>
+
+      <ProfileView profile={profileData} /> {/* Pass the fetched profile data */}
+
+      <div className="mt-12">
+        <h2 className="text-2xl md:text-3xl font-semibold mb-6 text-gray-800 dark:text-gray-200">
+          Recent Posts
+        </h2>
+        {isLoadingPublications && !postsToDisplay.length && (
+            <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400 animate-pulse">Loading posts...</p>
+            </div>
+        )}
+        {publicationsError && (
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 p-4 rounded-md shadow-sm" role="alert">
+            <p className="font-medium text-sm">Error loading posts:</p>
+            <p className="text-xs">{publicationsError.message}</p>
+          </div>
+        )}
+        {!isLoadingPublications && !publicationsError && postsToDisplay.length === 0 && (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <InformationCircleIcon className="h-16 w-16 mx-auto mb-3 opacity-30" />
+            <p className="text-lg">This profile hasn't made any posts yet.</p>
+          </div>
+        )}
+
+        {postsToDisplay.length > 0 && (
+          <div className="space-y-6">
+            {postsToDisplay.map((pub) => (
+              <PublicationCard key={pub.id} publication={pub as PostFragment} />
+            ))}
+          </div>
+        )}
+
+        {/* Load More Button for Publications */}
+        {hasMorePublications && fetchNextPublications && (
+            <div className="text-center mt-8">
+                <button
+                    onClick={async () => {
+                        try { await fetchNextPublications(); }
+                        catch (e: any) { console.error("Failed to fetch next page of publications:", e.message); }
+                    }}
+                    disabled={isLoadingPublications}
+                    className="px-6 py-2 bg-kintask-blue text-white font-semibold rounded-lg hover:bg-kintask-blue-dark focus:outline-none focus:ring-2 focus:ring-kintask-blue focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    {isLoadingPublications ? 'Loading More...' : 'Load More Posts'}
+                </button>
+            </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ProfilePage;===== ./pages/question/[id].tsx =====
+// src/pages/questions/[id].tsx (or pages/questions/[id].tsx)
+// Assuming URL structure like /questions/0x01-0x01
+
+import { NextPage } from "next";
+import { useRouter } from "next/router";
+import Link from "next/link"; // Import Link for Next.js navigation
+
+// --- SPECULATIVE V3 SDK IMPORTS ---
+// Replace with actual imports from your chosen Lens V3 React SDK package
+import {
+  usePublication,   // Hypothetical hook to fetch a single publication
+  Publication,      // V3 type for a generic publication
+  Post,             // V3 type for a Post
+  PublicationId,    // V3 type for PublicationId
+  LimitType,        // V3 type for limits
+  // Profile,       // V3 Profile type (if needed for 'by' field)
+} from '@lens-protocol/react-web'; 
+// --- END SPECULATIVE IMPORTS ---
+
+import AnswerComposer from "@/components/AnswerComposer";     // Adjust path
+import AcceptAnswerButton from "@/components/AcceptAnswerButton"; // Adjust path
+import { bountyCollectModuleAddress } from '@/lib/contractAddresses'; // Adjust path
+import { InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
+
+
+// Helper to display metadata content safely
+const renderContent = (metadata: Publication['metadata'] | null | undefined) => {
+  if (!metadata) return <p className="text-gray-600 dark:text-gray-400">No content available.</p>;
+  // V3 metadata structure might differ, adjust access accordingly
+  // Example: content might be in metadata.content or metadata.article.content, etc.
+  const content = (metadata as any)?.content || (metadata as any)?.article?.content || (metadata as any)?.description || (metadata as any)?.name || "";
+  return <p className="mb-4 whitespace-pre-line break-words text-gray-800 dark:text-gray-200">{content}</p>;
+};
+
+
+const QuestionDetail: NextPage = () => {
+  const router = useRouter();
+  const { query } = router;
+
+  // Get publicationId from URL query
+  const publicationIdFromQuery = query.id as PublicationId | undefined;
+
+  // --- Fetch the Specific Publication (Question) using Lens V3 Hook ---
+  const {
+    data: question, // Type should be Publication | Post | null | undefined
+    loading: isLoadingQuestion,
+    error: questionError,
+  } = usePublication({
+    // Parameter name for fetching by ID will be defined by the V3 hook
+    // It could be 'publicationId', 'forId', 'id', etc.
+    forId: publicationIdFromQuery, // SPECULATIVE: Based on V2 client
+    // publicationId: publicationIdFromQuery, // Another possibility
+    enabled: !!publicationIdFromQuery, // Only fetch if ID is present
+    // observerId: activeProfile?.id // Optional: if hook supports fetching with observer context
+  });
+
+
+
+  // Extract comments array, V3 hook might return data directly or nested { items: ... }
+  const answers =  []; // Adapt based on hook's return structure
+
+  // --- Render Logic ---
+  if (isLoadingQuestion && !question) {
+    return <div className="flex justify-center items-center min-h-screen"><p className="p-4 text-gray-500">Loading question details...</p></div>;
+  }
+
+  if (questionError && !question) { // If error and no question data (even mock)
+    return (
+      <main className="max-w-3xl mx-auto p-4">
+         <button onClick={() => router.back()} className="mb-4 text-blue-500 hover:underline">
+            ← Back
+        </button>
+        <div className="bg-red-100 dark:bg-red-900 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-md shadow-md" role="alert">
+          <div className="flex">
+            <div className="py-1"><ExclamationTriangleIcon className="h-6 w-6 text-red-500 dark:text-red-400 mr-3" /></div>
+            <div>
+              <p className="font-bold">Error Loading Question</p>
+              <p className="text-sm">{questionError.message}</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!question) { // Should be caught by error or loading, but as a fallback
+    return (
+        <main className="max-w-3xl mx-auto p-4">
+           <button onClick={() => router.back()} className="mb-4 text-blue-500 hover:underline">
+            ← Back
+           </button>
+           <div className="bg-sky-100 dark:bg-sky-900 border-l-4 border-sky-500 text-sky-700 dark:text-sky-300 p-4 rounded-md shadow-md" role="alert">
+             <div className="flex">
+               <div className="py-1"><InformationCircleIcon className="h-6 w-6 text-sky-500 dark:text-sky-400 mr-3" /></div>
+               <div>
+                 <p className="font-bold">Question Not Found</p>
+                 <p className="text-sm">The question you are looking for could not be found.</p>
+               </div>
+             </div>
+           </div>
+        </main>
+    );
+  }
+
+  // Cast to Post if you are sure it's a Post, or handle different publication types
+  const questionAsPost = question as Post;
+
+  return (
+    <main className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
+      <Link href="/" legacyBehavior>
+        <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors">
+          ← Back to Explore Questions
+        </a>
+      </Link>
+
+      {/* Display main question content */}
+      <article className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-6 border dark:border-gray-700">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-3 text-gray-900 dark:text-white break-words">
+          {/* V3 metadata access will differ. Example: */}
+          {(questionAsPost.metadata as any)?.title || (questionAsPost.metadata as any)?.name || "Question Details"}
+        </h1>
+        <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400 mb-4">
+          <span>By: {question.by?.handle?.fullHandle || question.by?.id}</span>
+          <span>·</span>
+          <span>ID: {question.id}</span>
+          <span>·</span>
+          <span>Posted: {new Date(question.createdAt).toLocaleDateString()}</span>
+        </div>
+        <div className="prose dark:prose-invert max-w-none">
+            {renderContent(question.metadata)}
+        </div>
+      </article>
+
+      <hr className="my-8 border-gray-200 dark:border-gray-700"/>
+
+      <h2 className="text-xl sm:text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-200">Answers ({answers.length})</h2>
+      <section className="space-y-6">
+
+
+        {answers.map((answer: Publication /* Use V3 Comment type if available */) => (
+          <div key={answer.id} className="border dark:border-gray-700 p-4 rounded-lg bg-white dark:bg-gray-800 shadow-md">
+            <div className="prose dark:prose-invert max-w-none text-sm">
+                {renderContent(answer.metadata)}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+              Answer by: {answer.by?.handle?.fullHandle || answer.by.id}
+            </p>
+
+            {/* Integrate your AcceptAnswerButton here if it's compatible with V3 types */}
+            <div className="mt-3 pt-3 border-t dark:border-gray-600">
+               <AcceptAnswerButton
+                 questionId={question.id as PublicationId} // Ensure type compatibility
+                 expertProfileId={answer.by.id} // Ensure type compatibility
+                 moduleActionId={bountyCollectModuleAddress as `0x${string}`} // Ensure this module address is relevant for V3
+               />
+            </div>
+          </div>
+        ))}
+
+        {/* Load More Button for Answers/Comments */}
+
+      </section>
+
+      <hr className="my-8 border-gray-200 dark:border-gray-700"/>
+
+      {/* Add Answer Composer */}
+      <AnswerComposer parentId={question.id as PublicationId} />
+    </main>
+  );
+};
+
+export default QuestionDetail;===== ./pages/_app.tsx =====
+import '@/styles/globals.css';
+import type { AppProps } from 'next/app';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+import {
+  LensProvider,
+  development,             // Import individual constants from react-web
+  production,
+} from '@lens-protocol/react-web';
+import { bindings } from '@lens-protocol/wagmi';
+import { WagmiProvider } from 'wagmi'; // WagmiProvider from wagmi
+import { wagmiConfig } from '@/lib/wagmi'; // Your wagmi config
+
+const queryClient = new QueryClient();
+
+// LensProvider config for V3
+// 'development' from @lens-protocol/react-web points to Lens Chain Sepolia
+// 'production' from @lens-protocol/react-web points to Lens Mainnet (Polygon)
+const lensEnvironment =
+  process.env.NODE_ENV === 'development' ? development : production;
+
+const lensConfig = {
+  environment: lensEnvironment,
+  bindings: bindings(wagmiConfig),
+};
+
+export default function App({ Component, pageProps }: AppProps) {
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <LensProvider config={lensConfig}>
+          <Component {...pageProps} />
+        </LensProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+===== ./styles/globals.css =====
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.btn {
+  @apply px-4 py-2 rounded font-medium text-white bg-blue-600 hover:bg-blue-700;
+}
+.btn-secondary {
+  @apply bg-gray-700 hover:bg-gray-800;
+}
+.btn-primary {
+  @apply bg-purple-600 hover:bg-purple-700;
+}
+
+
+@layer base {
+  body {
+    @apply bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200;
+    /* This provides a default background for the entire page */
+  }
+}

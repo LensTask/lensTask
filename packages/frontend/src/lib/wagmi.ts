@@ -1,30 +1,70 @@
-import { createConfig, http } from 'wagmi';
-// For LensProvider V3, the primary chain is Lens Chain Sepolia (37111).
-// WagmiProvider should at least include this chain.
-// Other chains like localhost can be kept for local contract testing if separate.
-import { sepolia, localhost } from 'wagmi/chains'; // Using sepolia as an example general chain
+import { createConfig, http, createStorage, cookieStorage } from 'wagmi';
+import { injected, metaMask, walletConnect } from '@wagmi/connectors';
+import { mainnet as ethereumMainnet, sepolia as wagmiSepolia, localhost } from 'wagmi/chains';
 
-// Define Lens Chain Sepolia for Wagmi
-const lensChainSepolia = {
-  id: 37111,
-  name: 'Lens Chain Sepolia',
-  nativeCurrency: { name: 'GRASS', symbol: 'GRASS', decimals: 18 },
+// --- Lens Chain Definition for Mainnet (ID 232) ---
+const LENS_CHAIN_MAINNET_RPC_URL = process.env.NEXT_PUBLIC_LENS_CHAIN_MAINNET_RPC_URL || 'https://rpc.lens.xyz';
+export const lensMainnetGHOChain = {
+  id: 232,
+  name: 'Lens Chain Mainnet',
+  nativeCurrency: { name: 'GHO', symbol: 'GHO', decimals: 18 },
   rpcUrls: {
-    default: { http: [process.env.NEXT_PUBLIC_LENS_TESTNET_RPC_URL || 'https://rpc.testnet.lens.dev'] },
-    public: { http: [process.env.NEXT_PUBLIC_LENS_TESTNET_RPC_URL || 'https://rpc.testnet.lens.dev'] },
+    default: { http: [LENS_CHAIN_MAINNET_RPC_URL] },
+    public: { http: [LENS_CHAIN_MAINNET_RPC_URL] },
   },
   blockExplorers: {
-    default: { name: 'LensScan', url: 'https://explorer.testnet.lens.dev' },
+    default: { name: 'LensScan Mainnet', url: 'https://explorer.lens.xyz' },
   },
-  testnet: true,
-};
+  testnet: false, // This is a mainnet
+} as const;
+
+// --- Auxiliary Chains (Optional but good for wallet compatibility) ---
+const SEPOLIA_ETHEREUM_RPC_URL = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://rpc.sepolia.org';
+export const appSepoliaChain = { // Ethereum Sepolia Testnet
+  ...wagmiSepolia,
+  id: 11155111,
+  rpcUrls: {
+    default: { http: [SEPOLIA_ETHEREUM_RPC_URL] },
+    public: { http: [SEPOLIA_ETHEREUM_RPC_URL] },
+  },
+} as const;
+
+// --- Wagmi Configuration ---
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+
+// ALWAYS use Lens Chain Mainnet (232) as the primary target
+export const CHAINS_CONFIG = [lensMainnetGHOChain, ethereumMainnet, appSepoliaChain, localhost];
+
+console.log(`[wagmiConfig] TARGETING LENS CHAIN MAINNET (ID 232)`);
+console.log(`[wagmiConfig] Active Lens Chain FOR WAGMI: ID=${lensMainnetGHOChain.id}, Name='${lensMainnetGHOChain.name}'`);
+console.log('[wagmiConfig] All configured chains in wagmi:', CHAINS_CONFIG.map(c => ({id: c.id, name: c.name})));
 
 export const wagmiConfig = createConfig({
-  // chains should ideally include the chain LensProvider's environment targets
-  chains: [lensChainSepolia, localhost],
-  transports: {
-    [lensChainSepolia.id]: http(lensChainSepolia.rpcUrls.default.http[0]),
-    [localhost.id]: http(), // For local hardhat node
-  },
-  // ssr: true, // Optional, often handled by providers
+  chains: CHAINS_CONFIG,
+  transports: Object.fromEntries(
+    CHAINS_CONFIG.map(chain => {
+      const rpcUrl = chain.rpcUrls.default?.http[0];
+      if (!rpcUrl && chain.id !== localhost.id) {
+        console.warn(`[wagmiConfig] No default HTTP RPC URL for chain ID ${chain.id} (${chain.name}). Using default http().`);
+        return [chain.id, http()];
+      }
+      return [chain.id, http(rpcUrl)];
+    })
+  ),
+  connectors: [
+    injected({ chains: CHAINS_CONFIG, shimDisconnect: true }),
+    metaMask({ chains: CHAINS_CONFIG, dAppMetadata: { name: "My Lens App" } }),
+    ...(projectId
+      ? [walletConnect({
+          projectId: projectId,
+          chains: CHAINS_CONFIG,
+          showQrModal: false,
+          metadata: { name: 'My Lens App', description: 'Lens App', url: typeof window !== 'undefined' ? window.location.origin : 'https://example.com', icons: ['/logo.png'] }
+        })]
+      : []),
+  ],
+  storage: typeof window !== 'undefined'
+    ? createStorage({ storage: window.localStorage, key: 'wagmi.store.lensintel.mainnet.v1' }) // New key for mainnet focus
+    : createStorage({ storage: cookieStorage, key: 'wagmi.ssr.lensintel.mainnet.v1', server: true }),
+  ssr: true,
 });

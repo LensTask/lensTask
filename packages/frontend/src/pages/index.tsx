@@ -5,7 +5,11 @@ import {
   useExplorePublications,
   ExplorePublicationType,
   ExplorePublicationsOrderByType,
-  LimitType // Assuming LimitType is also exported here or from @lens-protocol/client
+  LimitType,
+  // For login/session management (if you implement login directly on this page)
+  // useSession,
+  // useLogin,
+  // Profile
 } from '@lens-protocol/react-web';
 // Import types from @lens-protocol/client for data structure (PostFragment)
 import { PostFragment } from '@lens-protocol/client';
@@ -14,7 +18,22 @@ import QuestionCard from "@/components/QuestionCard";
 import QuestionCardSkeleton from "@/components/QuestionCardSkeleton";
 import { InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 
+// Import the component we are testing
+import SimplePostCreator from '@/components/SimplePostCreator';
+
 const Home: NextPage = () => {
+  // Example: If you wanted to manage login state on this page
+  // const { data: session } = useSession();
+  // const { execute: login, loading: isLoginPending, error: loginError } = useLogin();
+  // const activeProfile: Profile | null | undefined = session?.profile;
+
+  // const handleLogin = async () => {
+  //   // Assuming you have a way to get the wallet address (e.g., from Wagmi)
+  //   // const walletAddress = "0xYourWalletAddress";
+  //   // const result = await login({ address: walletAddress });
+  //   // if (result.isFailure()) console.error("Login failed:", result.error.message);
+  // };
+
   const { data: publications, error, loading: isLoading } = useExplorePublications({
     limit: LimitType.TwentyFive, // V3 SDK uses Enums like this
     orderBy: ExplorePublicationsOrderByType.Latest,
@@ -26,13 +45,43 @@ const Home: NextPage = () => {
     }
   });
 
-  console.log("useExplorePublications data:", publications);
-  console.log("useExplorePublications error:", error);
-  console.log("useExplorePublications isLoading:", isLoading);
+  // console.log("useExplorePublications data:", publications);
+  // console.log("useExplorePublications error:", error);
+  // console.log("useExplorePublications isLoading:", isLoading);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8">
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section for testing SimplePostCreator */}
+        <div className="my-8 p-4 border border-dashed border-gray-400 dark:border-gray-600 rounded-lg">
+          <h2 className="text-2xl font-semibold mb-4 text-center text-gray-700 dark:text-gray-300">
+            Test Post Creation
+          </h2>
+          {/*
+            The SimplePostCreator component itself checks for an active session.
+            If you don't have a global login/auth flow yet, you might see its "Please log in" message.
+            You would need a way to trigger login (e.g., a connect wallet button + Lens login flow)
+            for the SimplePostCreator to become fully functional.
+          */}
+          <SimplePostCreator />
+          {/* Example login button (if you were managing login state here) */}
+          {/* {!activeProfile && (
+            <div className="text-center mt-4">
+              <button
+                onClick={handleLogin}
+                disabled={isLoginPending}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+              >
+                {isLoginPending ? "Logging in..." : "Login with Lens"}
+              </button>
+              {loginError && <p className="text-red-500 mt-2">{loginError.message}</p>}
+            </div>
+          )} */}
+        </div>
+        {/* End Section for testing SimplePostCreator */}
+
+        <hr className="my-10 border-gray-300 dark:border-gray-700" />
+
         <div className="flex justify-between items-center mb-8">
           <div className="text-center flex-grow">
             <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white sm:text-5xl tracking-tight">
