@@ -1,34 +1,31 @@
 import { NextPage } from "next";
 import Link from 'next/link';
-// Import hooks and types from @lens-protocol/react-web for V3
 import {
   useExplorePublications,
   ExplorePublicationType,
   ExplorePublicationsOrderByType,
-  LimitType // Assuming LimitType is also exported here or from @lens-protocol/client
+  LimitType
 } from '@lens-protocol/react-web';
-// Import types from @lens-protocol/client for data structure (PostFragment)
 import { PostFragment } from '@lens-protocol/client';
 
 import QuestionCard from "@/components/QuestionCard";
 import QuestionCardSkeleton from "@/components/QuestionCardSkeleton";
+import SimplePostCreator from "@/components/SimplePostCreator";
+import ProfileCreator from "@/components/ProfileCreator"; // <--- IMPORT IT HERE
 import { InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 
 const Home: NextPage = () => {
   const { data: publications, error, loading: isLoading } = useExplorePublications({
-    limit: LimitType.TwentyFive, // V3 SDK uses Enums like this
+    limit: LimitType.TwentyFive,
     orderBy: ExplorePublicationsOrderByType.Latest,
     where: {
       publicationTypes: [ExplorePublicationType.Post],
-      // metadata: { // Optional: Filter for your app's questions
-      //   tags: { oneOf: ["lin-question-app"] } // Use your appId or a specific tag
-      // }
     }
   });
 
-  console.log("useExplorePublications data:", publications);
-  console.log("useExplorePublications error:", error);
-  console.log("useExplorePublications isLoading:", isLoading);
+  console.log("[IndexPage] useExplorePublications data:", publications);
+  console.log("[IndexPage] useExplorePublications error:", error);
+  console.log("[IndexPage] useExplorePublications isLoading:", isLoading);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8">
@@ -36,10 +33,10 @@ const Home: NextPage = () => {
         <div className="flex justify-between items-center mb-8">
           <div className="text-center flex-grow">
             <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white sm:text-5xl tracking-tight">
-              Latest Questions (Lens V3)
+              Latest Questions (Lens Testnet)
             </h1>
             <p className="mt-3 text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
-              Explore the latest discussions and insights from the community.
+              Explore the latest discussions from the community.
             </p>
           </div>
           <Link href="/ask" legacyBehavior>
@@ -48,6 +45,19 @@ const Home: NextPage = () => {
             </a>
           </Link>
         </div>
+
+        {/* Profile Creator Section */}
+        <div className="my-8 p-4 border border-dashed border-blue-400 dark:border-blue-600 rounded-lg">
+          <h2 className="text-2xl font-semibold mb-4 text-center text-gray-700 dark:text-gray-300">Manage Profile</h2>
+          <ProfileCreator />
+        </div>
+        {/* End Profile Creator Section */}
+
+        <div className="my-8 p-4 border border-dashed border-gray-400 dark:border-gray-600 rounded-lg">
+          <h2 className="text-2xl font-semibold mb-4 text-center text-gray-700 dark:text-gray-300">Test Post Creation</h2>
+          <SimplePostCreator />
+        </div>
+
 
         {isLoading && (!publications || publications.length === 0) && (
           <div className="space-y-6">
@@ -88,7 +98,6 @@ const Home: NextPage = () => {
         {!isLoading && publications && publications.length > 0 && (
           <div className="space-y-6">
             {publications.map((p) => (
-              // Cast 'p' to PostFragment as QuestionCard might expect specific fields
               <QuestionCard key={p.id} pub={p as PostFragment} />
             ))}
           </div>
