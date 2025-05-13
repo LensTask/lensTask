@@ -1,250 +1,125 @@
 #!/usr/bin/env node
-/* Enhanced Hard-wired Lens Explorer verifier (zkSync Era) with verbose debug
- * ---------------------------------------------------------------
- * CONTRACT_ADDR    – address you want to verify
- * ARTIFACT_FQN     – fully-qualified contract name from artifacts/
- * CONSTRUCTOR_HEX  – hex-encoded constructor args WITHOUT leading 0x
- * ZK_SOLC_VERSION  – exact zksolc version used for deployment
- */
+/*───────────────────────────────────────────────────────────────────────────────
+  Production Lens-Explorer verifier (zkSync Era) — verbose & robust
+───────────────────────────────────────────────────────────────────────────────
+  • CONTRACT_ADDR  – address you want to verify
+  • ARTIFACT_FQN   – fully-qualified contract name inside artifacts/
+  • CONSTRUCTOR_HEX-BYTES (no 0x !)  – constructor calldata you passed at deploy
+  • ZK_SOLC_VER    – exact zksolc version used
+───────────────────────────────────────────────────────────────────────────────*/
 
 const hardhat = require("hardhat");
 const { ethers } = hardhat;
-const axios   = require("axios");
-const fs      = require("fs");
-const path    = require("path");
+const axios     = require("axios");
+const fs        = require("fs");
 
-/* ─── EDIT THESE FOUR ONLY ─────────────────────────────────────── */
-const CONTRACT_ADDR   = "0x4Cc176C98241ce651811B99b64dd95aEC6e44a05";
+//─── EDIT THESE FOUR ONLY ──────────────────────────────────────────────────────
+const CONTRACT_ADDR   = "0xf30AA8d81C5DAc64A93ed0BCFC89a0404ca18790";
 const ARTIFACT_FQN    = "contracts/BountyCollectModule.sol:BountyCollectModule";
-const CONSTRUCTOR_HEX = "0x2c459684ef8C24A65C4632FE58b383C1Cf0c4cC6";
-const ZK_SOLC_VERSION = "v1.5.12";
-/* ──────────────────────────────────────────────────────────────── */
+const CONSTRUCTOR_HEX = "000000000000000000000000e34bac9a4b4d308f79c1b3a7036149dd717fea1a";   // 🚫 no 0x !
+const ZK_SOLC_VER     = "v1.5.12";
+//───────────────────────────────────────────────────────────────────────────────
 
-const DEBUG = true;           // set false for quiet mode
-const POLL_INTERVAL_MS = 5_000;
-const LOG_FILE = "./verification-debug.log";
+const POLL_MS  = 5_000;
+const LOG_FILE = "./verify.log";
 
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+/* ── helpers ─────────────────────────────────────────────────────────────────*/
+const log = (...msg) => {
+  const line = `[${new Date().toISOString()}] ${msg.join(" ")}`;
+  console.log(line);
+  fs.appendFileSync(LOG_FILE, line + "\n");
+};
 
-// Enhanced logging function that writes to both console and file
-function log(message, obj = null) {
-  const timestamp = new Date().toISOString();
-  let logMessage = `[${timestamp}] ${message}`;
-  
-  if (obj !== null) {
-    if (typeof obj === 'object') {
-      logMessage += `\n${JSON.stringify(obj, null, 2)}`;
-    } else {
-      logMessage += ` ${obj}`;
-    }
-  }
-  
-  console.log(logMessage);
-  fs.appendFileSync(LOG_FILE, logMessage + "\n");
-}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-function stripMetadata(hex) {
+const stripMetadata = hex => {
   if (hex.length < 4) return hex;
   const len = parseInt(hex.slice(-4), 16);
   const cut = (len + 2) * 2;
-  log(`Metadata stripping: len=${len}, cut=${cut}`);
   return cut <= hex.length ? hex.slice(0, -cut) : hex;
-}
+};
 
-// Initialize log file
-fs.writeFileSync(LOG_FILE, `=== Verification Debug Log - ${new Date().toISOString()} ===\n`);
+/* ── main ────────────────────────────────────────────────────────────────────*/
+fs.writeFileSync(LOG_FILE, `=== Lens verify ${new Date().toISOString()} ===\n`);
 
 (async () => {
-  /* 0 ▸ show RPC info */
-  const net = await ethers.provider.getNetwork();
-  log("🔗 RPC URL:", hardhat.config.networks[hardhat.network.name].url);
-  log("🔗 Network Name:", hardhat.network.name);
-  log("🔗 chainId:", net.chainId.toString());
+  /* 1 ▸ chain info */
+  const net  = await ethers.provider.getNetwork();
+  const conf = hardhat.config.networks[hardhat.network.name];
+  log("RPC :", conf.url);
+  log("Chain:", net.chainId);
 
-  /* 1 ▸ get on-chain code */
-  log(`Fetching bytecode for contract at ${CONTRACT_ADDR}...`);
-  const codeRaw = await ethers.provider.getCode(CONTRACT_ADDR);
-  log("🔗 raw getCode length:", (codeRaw.length - 2) / 2, "bytes");
-  log("🔗 raw bytecode (first 100 chars):", codeRaw.substring(0, 100) + "...");
-  
-  if (codeRaw === "0x") {
-    log("❌ No byte-code at that address on this network.");
-    process.exit(1);
-  }
-  
-  const code = stripMetadata(codeRaw.toLowerCase());
-  log("🔗 stripped runtime length:", code.length / 2, "bytes");
-  log("🔗 stripped bytecode (first 100 chars):", code.substring(0, 100) + "...");
+  /* 2 ▸ compare byte-code */
+  const runtimeOnChain = stripMetadata(
+    (await ethers.provider.getCode(CONTRACT_ADDR)).toLowerCase()
+  );
+  if (runtimeOnChain === "0x") throw new Error("no code on-chain");
 
-  /* 2 ▸ read local artifact and compare */
-  log(`Reading artifact for ${ARTIFACT_FQN}...`);
-  const art = await hardhat.artifacts.readArtifact(ARTIFACT_FQN);
-  log("📦 Artifact found:", {
-    contractName: art.contractName,
-    sourceName: art.sourceName,
-    abi: `[${art.abi.length} methods]`,
-    bytecodeLength: (art.bytecode.length - 2) / 2,
-    deployedBytecodeLength: (art.deployedBytecode.length - 2) / 2,
-  });
-  
-  const local = stripMetadata(art.deployedBytecode.toLowerCase());
-  log("📦 local artifact length:", local.length / 2, "bytes");
-  log("📦 local bytecode (first 100 chars):", local.substring(0, 100) + "...");
+  const art  = await hardhat.artifacts.readArtifact(ARTIFACT_FQN);
+  const runtimeLocal = stripMetadata(art.deployedBytecode.toLowerCase());
 
-  if (local !== code) {
-    log("❌ Local build does NOT match on-chain runtime.");
-    log("   Double-check compiler version / codegen / address.");
-    
-    // Additional debugging to help identify differences
-    const minLength = Math.min(local.length, code.length);
-    let firstDiffPos = -1;
-    
-    for (let i = 0; i < minLength; i++) {
-      if (local[i] !== code[i]) {
-        firstDiffPos = i;
-        break;
-      }
-    }
-    
-    if (firstDiffPos >= 0) {
-      const context = 20; // Show 20 chars before and after difference
-      const start = Math.max(0, firstDiffPos - context);
-      const end = Math.min(minLength, firstDiffPos + context);
-      
-      log(`First difference at position ${firstDiffPos}:`);
-      log(`Local : ${local.substring(start, firstDiffPos)}[${local[firstDiffPos]}]${local.substring(firstDiffPos + 1, end)}`);
-      log(`Remote: ${code.substring(start, firstDiffPos)}[${code[firstDiffPos]}]${code.substring(firstDiffPos + 1, end)}`);
-    } else if (local.length !== code.length) {
-      log(`Bytecodes have different lengths: local=${local.length}, onchain=${code.length}`);
-    }
-    
-    process.exit(1);
-  }
-  log("✅ exact match – submitting source …");
+  if (runtimeOnChain !== runtimeLocal)
+    throw new Error("local build does NOT match on-chain runtime");
 
   /* 3 ▸ prepare payload */
-  log("Preparing payload for verification API...");
-  const buildInfo = await hardhat.artifacts.getBuildInfo(ARTIFACT_FQN);
-  const solcVer = buildInfo.solcVersion.split("+")[0];   // e.g. "0.8.23"
-  
-  log("Build Info:", {
-    solcVersion: buildInfo.solcVersion,
-    solcLongVersion: buildInfo._solcVersion,
-    cleanedSolcVer: solcVer,
-    compilationTarget: JSON.stringify(buildInfo.output.contracts[art.sourceName][art.contractName].metadata, null, 2)
-  });
-
-  // Log optimizer settings
-  const optimizer = buildInfo.input.settings.optimizer || {};
-  log("Optimizer settings:", optimizer);
+  const build   = await hardhat.artifacts.getBuildInfo(ARTIFACT_FQN);
+  const solcVer = build.solcVersion.split("+")[0];
+  const opt     = build.input.settings.optimizer || {};
 
   const payload = {
-    module:               "contract",
-    action:               "verifysourcecode",
-    codeformat:           "solidity-standard-json-input",
+    module:              "contract",
+    action:              "verifysourcecode",
+    codeformat:          "solidity-standard-json-input",
 
-    contractaddress:      CONTRACT_ADDR,
-    contractname:         ARTIFACT_FQN,
-    compilerversion:      solcVer,
-    zkCompilerVersion:    ZK_SOLC_VERSION,
-    
-    // Add optimizationUsed and runs based on build info
-    optimizationUsed:     optimizer.enabled ? "1" : "0",
-    runs:                 optimizer.runs || 200,
-    evmVersion:           buildInfo.input.settings.evmVersion || "paris",
-    
-    constructorArguements: CONSTRUCTOR_HEX,  // Etherscan typo kept on purpose
-    sourceCode:           buildInfo.input
+    contractaddress:     CONTRACT_ADDR,
+    contractname:        ARTIFACT_FQN,
+    compilerversion:     solcVer,
+    zkCompilerVersion:   ZK_SOLC_VER,
+
+    optimizationUsed:    opt.enabled ? "1" : "0",
+    runs:                opt.runs || 200,
+    evmVersion:          build.input.settings.evmVersion || "paris",
+
+    constructorArguements: CONSTRUCTOR_HEX.startsWith("0x")
+                           ? CONSTRUCTOR_HEX.slice(2)
+                           : CONSTRUCTOR_HEX,
+
+    sourceCode:           build.input
   };
 
-  /* 4 ▸ POST to Lens Explorer */
-  log("📤 Submit payload:");
-  // Log a sanitized version of the payload (without full sourceCode for readability)
-  const sanitizedPayload = {...payload};
-  sanitizedPayload.sourceCode = "/* Source code omitted for log brevity */";
-  log(sanitizedPayload);
-  
-  // Save full payload to file for inspection
-  fs.writeFileSync("./verification-payload.json", JSON.stringify(payload, null, 2));
-  log("Full payload saved to ./verification-payload.json");
-  
-  let start;
-  try {
-    log("Sending POST request to https://explorer-api.lens.xyz/api/contract/verifySourceCode...");
-    const resp = await axios.post(
-      "https://explorer-api.lens.xyz/api/contract/verifySourceCode",
-      payload,
-      { 
-        headers: { "Content-Type": "application/json" },
-        timeout: 30000 // 30 second timeout
-      }
-    );
-    start = resp.data;
-    log("📥 Submit response:", start);
-  } catch (err) {
-    log("❌ HTTP error on submit:", err.response?.status, err.message);
-    log("⤷ Response headers:", err.response?.headers);
-    log("⤷ Response body:", err.response?.data);
-    
-    // If we have the raw request, log it too
-    if (err.request) {
-      log("⤷ Request details:", {
-        method: err.request.method,
-        path: err.request.path,
-        host: err.request.host
-      });
-    }
-    
-    process.exit(1);
-  }
+  /* 4 ▸ submit */
+  const { data: start } = await axios.post(
+    "https://explorer-api.lens.xyz/api/contract/verifySourceCode",
+    payload,
+    { headers: { "Content-Type": "application/json" } }
+  );
 
-  if (start.status !== "1") {
-    log("❌ Lens Explorer error:", start.result);
-    process.exit(1);
-  }
+  if (start.status !== "1")
+    throw new Error(`explorer error: ${start.result}`);
+
   const guid = start.result;
-  log("⚙️  verification queued – GUID:", guid);
+  log("GUID:", guid);
 
-  /* 5 ▸ poll until done */
-  let attempts = 0;
-  const pollUrl = `https://explorer-api.lens.xyz/api/contract/checkVerification?guid=${guid}`;
-  while (true) {
-    attempts++;
-    log(`🔎 Poll #${attempts}: GET ${pollUrl}`);
-    let poll;
-    try {
-      const resp = await axios.get(pollUrl, { timeout: 10000 }); // 10 second timeout
-      poll = resp.data;
-      log("📥 Poll response:", poll);
-    } catch (e) {
-      if (e.response?.status === 404) {
-        log("… GUID not active yet (404), retrying in 5s");
-        await sleep(POLL_INTERVAL_MS);
-        continue;
-      }
-      log("❌ HTTP error on poll:", e.response?.status, e.message);
-      log("⤷ Response headers:", e.response?.headers);
-      log("⤷ Response body:", e.response?.data);
-      process.exit(1);
-    }
+  /* 5 ▸ poll */
+  const pollURL =
+    `https://explorer-api.lens.xyz/api?module=contract&action=checkverifystatus&guid=${guid}`;
 
-    if (poll.status === "0") {
-      log("… still pending:", poll.result);
-    } else if (poll.status === "1") {
-      log("🎉  verified & published!");
+  for (;;) {
+    await sleep(POLL_MS);
+    const { data: poll } = await axios.get(pollURL);
+    if (poll.result === "Pass - Verified") {
+      log("✅ verified!");
       break;
-    } else {
-      log("❌ Verification failed:", poll.result);
-      process.exit(1);
     }
-
-    await sleep(POLL_INTERVAL_MS);
+    if (poll.status === "0") {
+      log("…", poll.result);
+    } else {
+      throw new Error(`verification failed: ${poll.result}`);
+    }
   }
 
-  log("🔗", `https://explorer.lens.xyz/address/${CONTRACT_ADDR}`);
-  log("Verification process completed successfully!");
-})().catch((err) => {
-  log("❌ Unhandled error:", err.message ?? err);
-  log(err.stack);
+  log("Link: https://explorer.lens.xyz/address/" + CONTRACT_ADDR);
+})().catch(e => {
+  log("❌", e.message);
   process.exit(1);
 });
