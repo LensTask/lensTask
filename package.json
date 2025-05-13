@@ -10,9 +10,9 @@
     "test": "pnpm --filter @lin/contracts run test",
     "deploy": "pnpm --filter @lin/contracts run deploy",
     "dev:node": "pnpm --filter @lin/contracts exec hardhat node --hostname 0.0.0.0",
-    "test:contracts:unit" : "pnpm --filter @lin/contracts run test:contracts:unit",
-    "test:contracts:testnet" : "pnpm --filter @lin/contracts run test:contracts:testnet",
-    "test:contracts:integration" : "pnpm --filter @lin/contracts run test:contracts:integration"
+    "test:contracts:unit": "pnpm --filter @lin/contracts run test:contracts:unit",
+    "test:contracts:testnet": "pnpm --filter @lin/contracts run test:contracts:testnet",
+    "test:contracts:integration": "pnpm --filter @lin/contracts run test:contracts:integration"
   },
   "devDependencies": {
     "@lens-protocol/client": "^2.0.0",
@@ -28,15 +28,19 @@
       "@matterlabs/hardhat-zksync-node": "1.4.0"
     },
     "onlyBuiltDependencies": [
+      "@nomicfoundation/hardhat-toolbox",
       "bufferutil",
-      "keccak",
-      "secp256k1",
-      "utf-8-validate",
+      "cpu-features",
       "hardhat",
-      "@nomicfoundation/hardhat-toolbox"
+      "keccak",
+      "protobufjs",
+      "secp256k1",
+      "ssh2",
+      "utf-8-validate"
     ]
   },
   "dependencies": {
+    "@graphprotocol/graph-cli": "^0.97.0",
     "@matterlabs/hardhat-zksync": "1.3.0",
     "dotenv": "^16.5.0",
     "zksync-ethers": "^6.17.0"

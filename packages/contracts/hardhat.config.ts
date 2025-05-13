@@ -67,7 +67,8 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
-      "lensSepolia": process.env.LENS_TESTNET_BLOCKSCOUT_API_KEY || "YOUR_API_KEY_PLACEHOLDER"
+      "lensSepolia": process.env.LENS_TESTNET_BLOCKSCOUT_API_KEY || "YOUR_API_KEY_PLACEHOLDER",
+      "lensMainnet": "none",
     },
     customChains: [
       {
@@ -76,6 +77,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.testnet.lens.dev/api",
           browserURL: "https://explorer.testnet.lens.dev"
+        }
+      },
+      {
+        network: "lensMainnet",
+        chainId: 232,
+        urls: {
+          apiURL: "https://explorer-api.lens.xyz/api",
+          browserURL: "https://explorer.lens.xyz"
         }
       }
     ]
