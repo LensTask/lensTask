@@ -23,8 +23,11 @@ const config: HardhatUserConfig = {
     },
   },
   zksolc: {
-    version: "latest",
-    settings: {},
+    version: "1.5.12",      // pin to the deployment version
+    settings: {
+      codegen: "evmla",     // force legacy assembly
+      optimizer: { enabled: true, runs: 200 }
+    }
   },
   defaultNetwork: "hardhat",
   networks: {
