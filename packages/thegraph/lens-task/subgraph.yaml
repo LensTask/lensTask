@@ -1,0 +1,29 @@
+specVersion: 1.3.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: contractsBountyCollectModule_solBountyCollectModule
+    network: lens
+    source:
+      address: "0xb42C6772D3AbaAeC6D5dc54C255583db006345A5"
+      abi: contractsBountyCollectModule_solBountyCollectModule
+      startBlock: 1597291
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - BountyInitialized
+        - BountyPaid
+      abis:
+        - name: contractsBountyCollectModule_solBountyCollectModule
+          file: ./abis/contractsBountyCollectModule_solBountyCollectModule.json
+      eventHandlers:
+        - event: BountyInitialized(indexed uint256,indexed uint256,indexed address,uint256,address)
+          handler: handleBountyInitialized
+        - event: BountyPaid(indexed uint256,indexed uint256,indexed address,uint256)
+          handler: handleBountyPaid
+      file: ./src/contracts-bounty-collect-module-sol-bounty-collect-module.ts

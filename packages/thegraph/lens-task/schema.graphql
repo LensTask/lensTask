@@ -1,0 +1,22 @@
+type BountyInitialized @entity(immutable: true) {
+  id: Bytes!
+  profileId: BigInt! # uint256
+  pubId: BigInt! # uint256
+  currency: Bytes! # address
+  amount: BigInt! # uint256
+  asker: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type BountyPaid @entity(immutable: true) {
+  id: Bytes!
+  profileId: BigInt! # uint256
+  pubId: BigInt! # uint256
+  expertAddress: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
