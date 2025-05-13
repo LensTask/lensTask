@@ -1,5 +1,10 @@
+// next.config.js
 /** @type {import('next').NextConfig} */
-module.exports = {
+const nextConfig = {
   reactStrictMode: true,
-  // No rewrites, let the SDK's environment.gqlEndpoint handle it directly
+  // Add the problematic package and its dependencies if necessary
+  transpilePackages: ['@lens-protocol/wagmi', 'wagmi'], // Add wagmi too as it's part of the issue
+  // You might need to add other @lens-protocol packages if they cause similar issues
 };
+
+module.exports = nextConfig;

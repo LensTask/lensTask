@@ -10,6 +10,7 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@lens-protocol/client": "0.0.0-canary-20250509094551",
+    "@lens-protocol/react": "0.0.0-canary-20250509094551",
     "@lens-protocol/react-web": "0.0.0-canary-20240430125244",
     "@lens-protocol/storage": "0.0.0-canary-20250509094551",
     "@lens-protocol/wagmi": "0.0.0-canary-20240430125244",

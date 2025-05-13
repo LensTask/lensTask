@@ -32,7 +32,7 @@ const PublicationCard: React.FC<PublicationCardProps> = ({ publication }) => {
         break;
       // TODO: Add cases for VideoMetadataV3, AudioMetadataV3, LinkMetadataV3, etc.
       default:
-        content = "Unsupported publication type or metadata missing.";
+        content = publication.metadata.content.substring(0, 300) + (publication.metadata.content.length > 300 ? '...' : '');
     }
   } else {
     content = "Metadata not available for this publication.";
