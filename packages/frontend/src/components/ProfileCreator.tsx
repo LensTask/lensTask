@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
 import { ConnectKitButton } from 'connectkit';
-import { fetchAccount,fetchAccountsBulk,createAccountWithUsername } from "@lens-protocol/client/actions";
+import { fetchAccount,fetchAccountsAvailable,createAccountWithUsername } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { evmAddress } from "@lens-protocol/client";
 import { uri } from "@lens-protocol/client";
@@ -51,15 +51,17 @@ export default function ProfileCreator() {
         try {
           // Check if the client is already authenticated (V2 might manage this internally)
           // This is a conceptual check; your SDK might have a direct method.
-          const result = await fetchAccount(client, {
-            address: evmAddress(address as `0x${string}`),
+          const result = await fetchAccountsAvailable(client, {
+            managedBy: evmAddress(address as `0x${string}`),
+            includeOwned: true,
           });
           
           if (result.isErr()) {
             return console.error(result.error);
           }
-          
-          const account = result.value;
+          console.log(result)
+          console.log(result.value)
+          const account = result.value.items[0].account;
           console.log(account)
           if(!account?.username){
             setIsCheckingLensSession(false);
@@ -67,11 +69,8 @@ export default function ProfileCreator() {
             setFeedback(`You need to create a profile!`);
             return;
           }
-          setActiveLensProfile({
-            id: account.username,
-            handle: null
-          });
-          setFeedback(`✅ Welcome back, @${account?.username}!`);
+          setActiveLensProfile(account);
+          setFeedback(`✅ Welcome back, @${account?.username.localName}!`);
           setIsCheckingLensSession(false);
           // If not authenticated or no profile in session, clear it
           setFeedback(isConnected ? "Wallet connected. You can login with Lens." : "Please connect your wallet.");
@@ -206,7 +205,7 @@ export default function ProfileCreator() {
       <div className="my-4 p-4 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-600 rounded-lg text-center">
         <p className="text-sm text-green-700 dark:text-green-200">
           Welcome! Interacting as: <br />
-          <strong className="font-medium">@{activeLensProfile.handle?.fullHandle || activeLensProfile.id}</strong>
+          <strong className="font-medium">@{activeLensProfile.username?.localName || activeLensProfile.address}</strong>
         </p>
       </div>
     );
