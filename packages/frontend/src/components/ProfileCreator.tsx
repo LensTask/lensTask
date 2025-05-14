@@ -12,9 +12,9 @@ import { never } from "@lens-protocol/client";
 
 import { account } from "@lens-protocol/metadata";
 
-// --- Lens Client SDK V2 Imports ---
-import { client } from "../lib/client"; // Your Lens SDK V2 client instance
+import { client } from "../lib/client"; 
 import { storageClient } from "../lib/storage-client";
+import useSessionClient from "../lib/useSessionClient";
 
 // import { evmAddress, Profile } from "@lens-protocol/client"; // For typing if needed
 // --- End Lens Imports ---
@@ -28,167 +28,30 @@ interface ActiveLensProfile {
 const LENS_APP_ADDRESS = "0xaC19aa2402b3AC3f9Fe471D4783EC68595432465"; // Using the one from your example
 
 export default function ProfileCreator() {
-  const [feedback, setFeedback] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { data: walletClient } = useWalletClient();
 
   const { address, isConnected, isConnecting } = useAccount();
-  const { signMessageAsync } = useSignMessage();
 
-  const [activeLensProfile, setActiveLensProfile] = useState<ActiveLensProfile | null>(null);
-  const [isCheckingLensSession, setIsCheckingLensSession] = useState(true);
-  const [sessionClient, setSessionClient] = useState();
+  const {
+    sessionClient,
+    feedback,
+    activeLensProfile,
+    isCheckingLensSession,
+    handleLoginOrCreateWithLens,
+    checkCurrentLensSession
+  } = useSessionClient();
   const [usernameSignUp, setUsernameSignUp] = useState();
 
   const [showSignUpForm, setSignUpFormActive] = useState(false);
 
+
+
   useEffect(() => {
-    const checkCurrentLensSession = async () => {
-      if (isConnected && address) {
-        setIsCheckingLensSession(true);
-        setFeedback("Checking Lens session...");
-        try {
-          // Check if the client is already authenticated (V2 might manage this internally)
-          // This is a conceptual check; your SDK might have a direct method.
-          const result = await fetchAccountsAvailable(client, {
-            managedBy: evmAddress(address as `0x${string}`),
-            includeOwned: true,
-          });
-          
-          if (result.isErr()) {
-            return console.error(result.error);
-          }
-          console.log(result)
-          console.log(result.value)
-          const account = result.value.items[0].account;
-          console.log(account);
-          const loginResult = await client.login({
-            onboardingUser: {
-              wallet: address as `0x${string}`, // Ensure address is in `0x...` format
-            },
-            signMessage: async (message: string) => {
-              console.log("[ProfileCreator] Signing Lens challenge...");
-              return signMessageAsync({ message }); // Use wagmi's signMessageAsync
-            },
-          });
-          const sessionClient = loginResult.value
-          sessionClient.switchAccount({
-            account: account?.address ?? never("Account not found"),
-          })
-          if(!account?.username){
-            setIsCheckingLensSession(false);
-            setActiveLensProfile(null);
-            setFeedback(`You need to create a profile!`);
-            return;
-          }
-          setActiveLensProfile(account);
-          setFeedback(`✅ Welcome back, @${account?.username.localName}!`);
-          setIsCheckingLensSession(false);
-          // If not authenticated or no profile in session, clear it
-          setFeedback(isConnected ? "Wallet connected. You can login with Lens." : "Please connect your wallet.");
-        } catch (e: any) {
-          console.warn("[ProfileCreator] Error checking existing Lens auth state:", e.message);
-          setActiveLensProfile(null);
-          setFeedback("Could not determine Lens session status.");
-        } finally {
-          setIsCheckingLensSession(false);
-        }
-      } else {
-        setActiveLensProfile(null);
-        setFeedback(null);
-        setIsCheckingLensSession(false);
-      }
-    };
-    checkCurrentLensSession();
-  }, [isConnected, address]);
-
-  const handleProfileCreation = async () => {
-    const metadata = account({
-      name: usernameSignUp,
-    });
-    
-    console.log(sessionClient)
-    const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
-    console.log(uriResult)
-    console.log(walletClient)
-    const result = await createAccountWithUsername(sessionClient, {
-      username: { localName: usernameSignUp },
-      metadataUri: uri(uriResult)
-    })
-      .andThen(handleOperationWith(walletClient))
-      .andThen(sessionClient.waitForTransaction)
-      .andThen(async (txHash) => fetchAccount(sessionClient, { txHash }))
-      .andThen((account) =>
-        sessionClient.switchAccount({
-          account: account?.address ?? never("Account not found"),
-        })
-      );;
-    console.log(result)
-  }
-
-
-  const handleLoginOrCreateWithLens = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFeedback(null);
-
-    if (!isConnected || !address) {
-      setFeedback('⚠️ Wallet not connected. Please connect your wallet first.');
-      return;
+    console.log(activeLensProfile)
+    if(!activeLensProfile){
+      setSignUpFormActive(true)
     }
-
-    console.log(`[ProfileCreator] Attempting Lens login/onboarding for address: ${address}`);
-    setFeedback(`Processing with Lens Protocol for wallet: ${address.substring(0,6)}...`);
-    setIsLoading(true);
-    if(usernameSignUp && sessionClient){
-      try{
-        handleProfileCreation();
-      } catch(err){
-        console.log(err)
-      }
-      setIsLoading(false)
-
-      return;
-    }
-    try {
-      // Using the login structure you provided
-      const loginResult = await client.login({
-        onboardingUser: {
-          wallet: address as `0x${string}`, // Ensure address is in `0x...` format
-        },
-        signMessage: async (message: string) => {
-          console.log("[ProfileCreator] Signing Lens challenge...");
-          return signMessageAsync({ message }); // Use wagmi's signMessageAsync
-        },
-      });
-      console.log(loginResult)
-      if (!loginResult.isErr()) {
-        // The `loginResult.value` is the authenticated LensClient instance
-        // We need to get the profile from this authenticated client.
-
-        setSessionClient(loginResult.value);
-        if(!activeLensProfile){
-          // Show form to create profile
-          setSignUpFormActive(true);
-        }  else {
-          // This case should ideally not happen if login was successful and implies onboarding
-          // or a default profile was expected.
-          console.error("[ProfileCreator] Login succeeded but no profile returned in session Client.");
-          setFeedback(`❌ Login seemed successful, but no profile data was retrieved.`);
-          setActiveLensProfile(null);
-        }
-      } else {
-        console.error("[ProfileCreator] Lens login/onboarding failed:", loginResult.error.message);
-        setFeedback(`❌ Lens Login/Onboarding Error: ${loginResult.error.message}`);
-        setActiveLensProfile(null);
-      }
-    } catch (err: any) {
-      console.error("[ProfileCreator] Exception during login/profile creation:", err);
-      setFeedback(`❌ Unexpected error: ${err.message}`);
-      setActiveLensProfile(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  },[activeLensProfile]);
 
   if (isConnecting || isCheckingLensSession) {
     return (
@@ -259,7 +122,7 @@ export default function ProfileCreator() {
         </div>
       </form>
       }
-      <form onSubmit={handleLoginOrCreateWithLens} className="space-y-4">
+      <div className="space-y-4">
         {/* Removed handle input as the provided login flow doesn't use it directly */}
         {/* If you want to specify a handle for creation, client.login might need different params or you'd use client.createProfile first */}
 
@@ -271,6 +134,7 @@ export default function ProfileCreator() {
 
         <div>
           <button
+            onClick={handleLoginOrCreateWithLens}
             type="submit" // Changed from onClick to type="submit" for form submission
             disabled={isLoading || !isConnected } // Only disable if loading or not connected
             className="w-full sm:w-auto inline-flex justify-center items-center px-6 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:bg-slate-400 dark:disabled:bg-slate-500 disabled:text-slate-700 dark:disabled:text-slate-400 disabled:cursor-not-allowed transition-colors duration-150"
@@ -290,7 +154,7 @@ export default function ProfileCreator() {
             }
           </button>
         </div>
-      </form>
+      </div>
       <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
         This will use your connected wallet to sign into Lens. If you don't have a profile linked yet, this may initiate profile creation.
       </p>
