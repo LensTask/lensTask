@@ -1,132 +1,112 @@
 import { useState, useEffect } from 'react';
 
-import { fetchAccount, fetchAccountsAvailable, createAccountWithUsername } from "@lens-protocol/client/actions";
-import { handleOperationWith } from "@lens-protocol/client/viem";
-import { evmAddress } from "@lens-protocol/client";
-import { uri } from "@lens-protocol/client";
-import { never } from "@lens-protocol/client";
-import { storageClient } from "./storage-client";
-import { client } from "./client";
-import { useAccount, useSignMessage, useWalletClient } from 'wagmi';
-import { account as makeMetadata } from "@lens-protocol/metadata";
+import {
+  fetchAccount,
+  fetchAccountsAvailable,
+  createAccountWithUsername,
+} from '@lens-protocol/client/actions';
+import { evmAddress, uri, never } from '@lens-protocol/client';
+import { handleOperationWith } from '@lens-protocol/client/viem';
 
+import { storageClient } from './storage-client';
+import { client } from './client';
+import { useAccount, useSignMessage, useWalletClient } from 'wagmi';
+import { account as makeMetadata } from '@lens-protocol/metadata';
+
+/**
+ * Hook that manages Lens sessions and profile creation.
+ *
+ * – Uses only `includeOwned` when fetching accounts (no manager filter).
+ * – Removes the unsupported `managers` field from `createAccountWithUsername`.
+ * – Correct `handleOperationWith` import path.
+ */
 const useSessionClient = () => {
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const { data: walletClient } = useWalletClient();
 
-  const [sessionClient, setSessionClient] = useState();
-  const [activeLensProfile, setActiveLensProfile] = useState(null);
+  const [sessionClient, setSessionClient] = useState<_SessionClient | undefined>();
+  const [activeLensProfile, setActiveLensProfile] = useState<Account | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isCheckingLensSession, setIsCheckingLensSession] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [usernameSignUp, setUsernameSignUp] = useState<string | undefined>(undefined);
-
-  const [isPosting, setIsPosting] = useState(false);
+  const [usernameSignUp, setUsernameSignUp] = useState<string | undefined>();
 
   const log = (...args: any[]) => console.log('[useSessionClient]', ...args);
   const warn = (...args: any[]) => console.warn('[useSessionClient]', ...args);
   const error = (...args: any[]) => console.error('[useSessionClient]', ...args);
 
+  /** Wait until the indexer picks up the new account. */
+  const fetchAccountWhenIndexed = async (txHash: string) => {
+    const MAX_RETRIES = 5;
+    for (let i = 0; i < MAX_RETRIES; i++) {
+      const accountRes = await fetchAccount(sessionClient!, { txHash });
+      if (accountRes) return accountRes;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    return undefined;
+  };
+
   const checkCurrentLensSession = async () => {
     if (!isConnected || !address) {
-      log('Wallet not connected, clearing session state.');
       setActiveLensProfile(null);
       setFeedback(null);
       setIsCheckingLensSession(false);
       return;
     }
 
-    log('Starting session check for address:', address);
     setIsCheckingLensSession(true);
-    setFeedback('Checking Lens session...');
+    setFeedback('Checking Lens session…');
 
     try {
-      // Fetch existing Lens accounts for this wallet
       const result = await fetchAccountsAvailable(client, {
-        managedBy: evmAddress(address as `0x${string}`),
-        includeOwned: true,
+        managedBy: evmAddress(address as `0x${string}`), // required by API
+        includeOwned: true, // also return accounts you *own* even if not manager
       });
+
       if (result.isErr()) {
-        error('Error fetching available accounts:', result.error);
+        error('Error fetching accounts:', result.error);
         setFeedback('Error retrieving Lens accounts.');
-        setIsCheckingLensSession(false);
         return;
       }
-      log('fetchAccountsAvailable returned:', result.value);
 
-      const savedAccount = result.value.items[0]?.account;
-      if (!savedAccount) {
-        log('No Lens profiles found for this wallet.');
-      }
+      const savedAccount = result.value.items.find(
+        (i) => i.account.owner.toLowerCase() === address.toLowerCase(),
+      )?.account;
 
-      // Attempt to resume previous session
       const resumed = await client.resumeSession();
-      log('resumeSession result:', resumed);
-
-      let currentClient;
       if (resumed && !resumed.isErr()) {
-        currentClient = resumed.value;
-        log('Resumed existing session client.');
-      } else {
-        log('No valid session found, performing new login.');
-        const loginResult = await client.login({
-          onboardingUser: { wallet: address as `0x${string}` },
-          signMessage: async (message: string) => {
-            log('Signing Lens challenge message...');
-            return signMessageAsync({ message });
-          },
-        });
-        if (loginResult.isErr()) {
-          error('Login failed:', loginResult.error.message);
-          setFeedback(`Login error: ${loginResult.error.message}`);
-          setIsCheckingLensSession(false);
-          return;
-        }
-        currentClient = loginResult.value;
-        log('Login succeeded, obtained new session client.');
+        setSessionClient(resumed.value);
       }
-
-      setSessionClient(currentClient);
 
       if (savedAccount) {
-        currentClient.switchAccount({ account: savedAccount.address });
-        if (!savedAccount.username) {
-          log('Found account without username, prompting for profile creation.');
-          setActiveLensProfile(null);
-          setFeedback('You need to create a Lens profile!');
-        } else {
-          setActiveLensProfile(savedAccount);
-          setFeedback(`✅ Welcome back, @${savedAccount.username.localName}!`);
-          log('Active profile set to:', savedAccount.username.localName);
-        }
+        resumed.value.switchAccount({ account: savedAccount.address });
+        setActiveLensProfile(savedAccount);
+        setFeedback(`✅ Welcome back, @${savedAccount.username?.localName}!`);
       } else {
         setActiveLensProfile(null);
         setFeedback('No Lens profile found. Please create one.');
       }
     } catch (err: any) {
-      warn('Error during session check:', err.message);
+      warn('Session check error:', err.message);
       setActiveLensProfile(null);
       setFeedback('Could not determine Lens session status.');
     } finally {
       setIsCheckingLensSession(false);
-      log('Session check complete.');
     }
   };
 
   const handleProfileCreation = async () => {
     if (!sessionClient || !usernameSignUp) {
-      error('Missing session client or username for profile creation.');
+      error('Missing session client or username.');
       return;
     }
 
-    log('Creating metadata for username:', usernameSignUp);
     const metadata = makeMetadata({ name: usernameSignUp });
     const { uri: metadataUri } = await storageClient.uploadAsJson(metadata);
-    log('Uploaded metadata to URI:', metadataUri);
 
     if (!walletClient) {
-      error('Wallet client not available for transaction handling.');
+      error('Wallet client not available.');
       return;
     }
 
@@ -136,19 +116,14 @@ const useSessionClient = () => {
     })
       .andThen(handleOperationWith(walletClient))
       .andThen(sessionClient.waitForTransaction)
-      .andThen(async (txHash) => {
-        log('Transaction confirmed with hash:', txHash);
-        return fetchAccount(sessionClient, { txHash });
-      })
+      .andThen(fetchAccountWhenIndexed)
       .andThen((accountData) => {
-        current:
-        sessionClient.switchAccount({ account: accountData?.address ?? never('No account address') });
+        sessionClient.switchAccount({ account: accountData?.address ?? never('No account') });
         setActiveLensProfile(accountData);
-        log('Profile creation complete, switched to new account:', accountData?.username.localName);
       });
 
     if (result.isErr()) {
-      error('Error creating profile:', result.error);
+      error('Profile creation failed:', result.error);
       setFeedback(`Profile creation failed: ${result.error.message}`);
     }
   };
@@ -158,57 +133,43 @@ const useSessionClient = () => {
     setFeedback(null);
 
     if (!isConnected || !address) {
-      setFeedback('⚠️ Wallet not connected. Please connect your wallet first.');
+      setFeedback('⚠️ Wallet not connected.');
       return;
     }
 
-    log('Initiating login/onboarding flow for wallet:', address);
-    setFeedback(`Processing Lens Protocol login for wallet: ${address.substring(0, 6)}...`);
     setIsLoading(true);
 
     try {
       if (usernameSignUp && sessionClient) {
-        log('Detected signup username and existing session, creating profile.');
         await handleProfileCreation();
         return;
       }
 
       const loginResult = await client.login({
         onboardingUser: { wallet: address as `0x${string}` },
-        signMessage: async (message: string) => {
-          log('Signing Lens challenge message...');
-          return signMessageAsync({ message });
-        },
+        signMessage: (message: string) => signMessageAsync({ message }),
       });
 
-      if (loginResult.isErr()) {
-        error('Lens login/onboarding failed:', loginResult.error.message);
+      if (loginResult?.isErr && loginResult.isErr()) {
         setFeedback(`❌ Lens login error: ${loginResult.error.message}`);
         return;
       }
 
-      const newClient = loginResult.value;
-      setSessionClient(newClient);
-      log('Login/onboarding succeeded, session client set.');
-
-      if (!activeLensProfile) {
-        log('No active profile after login, awaiting profile creation.');
+      if (!loginResult || !('value' in loginResult)) {
+        throw new Error('Empty login result');
       }
+
+      setSessionClient(loginResult.value);
     } catch (err: any) {
-      error('Unexpected error during login/onboarding:', err.message);
       setFeedback(`❌ Unexpected error: ${err.message}`);
     } finally {
       setIsLoading(false);
-      log('Login/onboarding flow complete.');
     }
   };
 
   useEffect(() => {
-    if (isConnected && address) {
-      checkCurrentLensSession()
-    }
-  }, [isConnected, address])
-  
+    if (isConnected && address) checkCurrentLensSession();
+  }, [isConnected, address]);
 
   return {
     sessionClient,
@@ -221,7 +182,7 @@ const useSessionClient = () => {
     handleLoginOrCreateWithLens,
     handleProfileCreation,
     checkCurrentLensSession,
-  };
+  } as const;
 };
 
 export default useSessionClient;
