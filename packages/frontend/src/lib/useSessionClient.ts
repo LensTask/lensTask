@@ -8,6 +8,7 @@ import { never } from "@lens-protocol/client";
 import { storageClient } from "./storage-client";
 import { client } from "./client";
 import { useAccount, useSignMessage,useWalletClient } from 'wagmi';
+import { account } from "@lens-protocol/metadata";
 
 const useSessionClient = () => {
     const { address, isConnected, isConnecting } = useAccount();
@@ -18,6 +19,8 @@ const useSessionClient = () => {
     const [activeLensProfile, setActiveLensProfile] = useState(null);
     const [feedback, setFeedback] = useState<string | null>(null);
     const [isCheckingLensSession, setIsCheckingLensSession] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+    const [usernameSignUp, setUsernameSignUp] = useState();
 
     const [isPosting, setIsPosting] = useState(false); 
     const checkCurrentLensSession = async () => {
@@ -91,27 +94,30 @@ const useSessionClient = () => {
 
     
     const handleProfileCreation = async () => {
-    const metadata = account({
-        name: usernameSignUp,
-    });
-    
-    console.log(sessionClient)
-    const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
-    console.log(uriResult)
-    console.log(walletClient)
-    const result = await createAccountWithUsername(sessionClient, {
-        username: { localName: usernameSignUp },
-        metadataUri: uri(uriResult)
-    })
+        const metadata = account({
+            name: usernameSignUp,
+        });
+        
+        console.log(sessionClient)
+        const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
+        console.log(uriResult)
+        console.log(walletClient)
+        const result = await createAccountWithUsername(sessionClient, {
+            username: { localName: usernameSignUp },
+            metadataUri: uri(uriResult)
+        })
         .andThen(handleOperationWith(walletClient))
         .andThen(sessionClient.waitForTransaction)
         .andThen(async (txHash) => fetchAccount(sessionClient, { txHash }))
-        .andThen((account) =>
-        sessionClient.switchAccount({
-            account: account?.address ?? never("Account not found"),
-        })
-        );;
-    console.log(result)
+        .andThen((account) =>{
+
+            sessionClient.switchAccount({
+                account: account?.address ?? never("Account not found"),
+            });
+            setActiveLensProfile(account);
+          }
+        );
+        console.log(result)
     }
 
 
@@ -156,7 +162,7 @@ const useSessionClient = () => {
         setSessionClient(loginResult.value);
         if(!activeLensProfile){
             // Show form to create profile
-            setSignUpFormActive(true);
+            //setSignUpFormActive(true);
         }  else {
             // This case should ideally not happen if login was successful and implies onboarding
             // or a default profile was expected.
@@ -185,6 +191,9 @@ const useSessionClient = () => {
         activeLensProfile,
         feedback,
         isCheckingLensSession,
+        isLoading,
+        usernameSignUp,
+        setUsernameSignUp,
         handleLoginOrCreateWithLens,
         handleProfileCreation,
         checkCurrentLensSession

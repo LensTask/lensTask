@@ -28,7 +28,6 @@ interface ActiveLensProfile {
 const LENS_APP_ADDRESS = "0xaC19aa2402b3AC3f9Fe471D4783EC68595432465"; // Using the one from your example
 
 export default function ProfileCreator() {
-  const [isLoading, setIsLoading] = useState(false);
 
   const { address, isConnected, isConnecting } = useAccount();
 
@@ -37,10 +36,12 @@ export default function ProfileCreator() {
     feedback,
     activeLensProfile,
     isCheckingLensSession,
+    isLoading,
+    usernameSignUp,
+    setUsernameSignUp,
     handleLoginOrCreateWithLens,
     checkCurrentLensSession
   } = useSessionClient();
-  const [usernameSignUp, setUsernameSignUp] = useState();
 
   const [showSignUpForm, setSignUpFormActive] = useState(false);
 
