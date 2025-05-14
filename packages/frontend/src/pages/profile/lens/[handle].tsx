@@ -1,102 +1,159 @@
 // src/pages/profile/[handle].tsx
 // OR pages/profile/[handle].tsx
 
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // Import React hooks
 import { useRouter } from 'next/router';
-import Link from 'next/link'; // For Next.js navigation
-// --- LENS V3 REACT SDK IMPORTS ---
-// Ensure these imports match your installed V3 SDK package exactly
+import Link from 'next/link';
+import { NextPage } from 'next';
+
+// --- LENS CLIENT SDK V2 IMPORTS ---
 import {
-  profileId,
-  useProfile,
-  usePublications,
-  Post,           // V3 type for a Post
-  PublicationType,       // Example enum for types
-  LimitType,           // V3 type for limits, or use numbers
-} from '@lens-protocol/react-web'; // SPECULATIVE: Replace with actual package name
-// --- END LENS V3 IMPORTS ---
-import { PostFragment } from '@lens-protocol/client';
+  Account,
+  AnyPublication,
+  EvmAddress,
+  ProfileId,
+  PublicationType,
+  LimitType,
+  PublicationSortCriterion,
+  PageInfo, // For pagination
+  fetchAccount,
+  fetchPosts,
+} from "@lens-protocol/client/actions";
+import { client } from "../../../lib/client"; // Your Lens SDK V2 client instance
+// --- END LENS CLIENT SDK V2 IMPORTS ---
 
-import ProfileView from '../../../components/ProfileView';       // Adjust path
-import PublicationCard from '../../../components/PublicationCard';   // Adjust path
-import { InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid'; // For nice error/info messages
+// Your custom components
+import ProfileView from '../../../components/ProfileView';
+import PublicationCard from '../../../components/PublicationCard';
+import ProfilePageSkeleton from '../../../components/ProfilePageSkeleton'; // Create a skeleton for the whole page
+import QuestionCardSkeleton from '../../../components/QuestionCardSkeleton'; // Create a skeleton for the whole page
 
-const ProfilePage: React.FC = () => {
+import { InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
+
+// Define a type for your error state
+interface FetchError {
+  message: string;
+  type?: 'profile' | 'publications'; // To distinguish which fetch failed
+}
+
+const ProfilePage: NextPage = () => {
   const router = useRouter();
-  const { query } = router;
+  const { handle: rawHandleFromQuery } = router.query; // Get handle directly from query
 
-  // 1. Get the raw handle from the URL query
-  const rawHandleFromQuery = Array.isArray(query.handle) ? query.handle[0] : query.handle;
+  // --- State Management ---
+  const [profile, setProfile] = useState<Account | null>(null);
+  const [publications, setPublications] = useState<AnyPublication[]>([]);
+  const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
+  const [isLoadingPublications, setIsLoadingPublications] = useState<boolean>(false); // Initially true only if profile loads
+  const [error, setError] = useState<FetchError | null>(null);
+  const [publicationsPageInfo, setPublicationsPageInfo] = useState<PageInfo | null>(null);
 
-  // 2. Prepare the handle for the `useProfile` hook
-  // The hook likely expects the full namespaced handle, e.g., "lens/stani" or "test/stani"
-  // The URL might provide "stani.lens" or "stani.test"
-  let apiFormattedProfileHandle: string | undefined = undefined;
-  if (rawHandleFromQuery) {
-    const parts = rawHandleFromQuery.split('.');
-    if (parts.length === 2) { // e.g., "stani.lens" or "dave.test"
-      apiFormattedProfileHandle = `${parts[1]}/${parts[0]}`; // -> "lens/stani" or "test/dave"
-    } else if (parts.length === 1) {
-      // If only "stani" is in URL, assume default namespace (e.g., "lens")
-      // This might be too assumptive; better if URL always has full "name.namespace"
-      console.warn(`[ProfilePage] Handle "${rawHandleFromQuery}" from URL is only localname. Assuming default namespace 'lens'.`);
-      apiFormattedProfileHandle = `lens/${rawHandleFromQuery}`; // e.g. "lens/stani"
-    } else {
-      console.error(`[ProfilePage] Invalid handle format from URL: "${rawHandleFromQuery}"`);
-      // apiFormattedProfileHandle remains undefined, hook won't run or will error
+  // --- Data Fetching Effect ---
+  useEffect(() => {
+    if (!rawHandleFromQuery) {
+      // Handle case where router query is not yet available or handle is missing
+      setIsLoadingProfile(false); // Stop loading if no handle
+      return;
     }
-  }
-  // --- Fetch the Specific Profile using Lens V3 `useProfile` Hook ---
-  const {
-    data: profileData,
-    loading: isLoadingProfile,
-    error: profileError,
-  } = useProfile({
-    forHandle: apiFormattedProfileHandle, // Pass the correctly formatted handle
-  });
 
-  // --- Fetch Profile's Publications using Lens V3 `usePublications` Hook ---
-  const profileIdForPublications = profileData?.id; // Get ID from successfully fetched profile
+    const handleParam = Array.isArray(rawHandleFromQuery) ? rawHandleFromQuery[0] : rawHandleFromQuery;
 
-  const {
-    data: publicationsPaginator, // The hook likely returns a paginator object
-    loading: isLoadingPublications,
-    error: publicationsError,
-    hasMore: hasMorePublications,
-    next: fetchNextPublications,
-  } = usePublications({
-    limit: LimitType.Ten, 
-    where: {
-      publicationTypes: [PublicationType.Post],
-      from: [profileId(profileIdForPublications)], 
+    let fullHandleForFetch: string | undefined;
+    if (handleParam.includes('/')) { // e.g. lens/stani
+        const parts = handleParam.split('/');
+        if (parts.length === 2) fullHandleForFetch = `${parts[1]}.${parts[0]}`;
+    } else if (handleParam.includes('.')) { // e.g. stani.lens
+        fullHandleForFetch = handleParam;
+    } else { // e.g. stani (assume .lens)
+        fullHandleForFetch = `${handleParam}`;
     }
-  });
-  console.log(publicationsPaginator)
-  // Extract actual publication items from the paginator
-  const postsToDisplay: Post[] = (publicationsPaginator || []) as Post[];
 
+    if (!fullHandleForFetch) {
+        setError({ message: "Invalid handle format.", type: 'profile' });
+        setIsLoadingProfile(false);
+        return;
+    }
+
+    const loadProfileAndPosts = async () => {
+      setIsLoadingProfile(true);
+      setError(null);
+      setPublications([]); // Clear previous publications
+
+      // 1. Fetch Profile
+      console.log(`[ProfilePage useEffect] Fetching account for handle: ${fullHandleForFetch}`);
+      const accountResult = await fetchAccount(client, { username: {localName: fullHandleForFetch}});
+
+      if (accountResult.isErr()) {
+        console.error("[ProfilePage useEffect] Error fetching account:", accountResult.error.message);
+        setError({ message: accountResult.error.message, type: 'profile' });
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      const fetchedProfile = accountResult.value;
+      if (!fetchedProfile) {
+        console.log(`[ProfilePage useEffect] Account/Profile not found for handle: ${fullHandleForFetch}`);
+        // setError({ message: "Profile not found.", type: 'profile' }); // Or just show "Profile Not Found" UI
+        setProfile(null); // Explicitly set to null if not found
+        setIsLoadingProfile(false);
+        return;
+      }
+      console.log(fetchedProfile)
+      setProfile(fetchedProfile);
+      setIsLoadingProfile(false); // Profile loading finished
+
+      // 2. Fetch Profile's Publications (only if profile was found)
+      setIsLoadingPublications(true); // Start loading publications
+      const authorAddress = fetchedProfile.address as EvmAddress;
+
+      console.log(`[ProfilePage useEffect] Fetching publications for author address: ${authorAddress}`);
+      const publicationsResult = await fetchPosts(client, {
+        filter: {
+          authors: authorAddress, // the author's EVM address
+        },
+      });
+
+      if (publicationsResult.isErr()) {
+        console.error("[ProfilePage useEffect] Error fetching publications:", publicationsResult.error.message);
+        setError({ message: publicationsResult.error.message, type: 'publications' });
+      } else {
+        setPublications(publicationsResult.value.items);
+        console.log(publicationsResult.value.items)
+        setPublicationsPageInfo(publicationsResult.value.pageInfo);
+        console.log(`[ProfilePage useEffect] Fetched ${publicationsResult.value.items.length} publications.`);
+      }
+      setIsLoadingPublications(false); // Publications loading finished
+    };
+
+    loadProfileAndPosts();
+
+  }, [rawHandleFromQuery]); // Re-run effect if the handle in the URL changes
 
   // --- Render Logic ---
-  if (isLoadingProfile && !profileData) {
-    return <div className="flex justify-center items-center min-h-screen"><p className="p-4 text-gray-500 dark:text-gray-400 animate-pulse">Loading profile for "{rawHandleFromQuery || 'profile'}"...</p></div>;
+
+  // Overall page loading state (while profile is being fetched)
+  if (isLoadingProfile && !profile && !error) {
+    // You might want a more specific skeleton for the entire profile page
+    return <ProfilePageSkeleton handle={Array.isArray(rawHandleFromQuery) ? rawHandleFromQuery[0] : rawHandleFromQuery} />;
   }
 
-  if (profileError && !profileData) {
+  // Handle profile fetch error
+  if (error && error.type === 'profile' && !profile) {
     return (
       <main className="max-w-3xl mx-auto p-4 text-center">
-         <Link href="/" legacyBehavior>
-            <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
-             ← Back to Explore
-            </a>
-         </Link>
+        <Link href="/" legacyBehavior>
+          <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
+            ← Back to Kintask Home
+          </a>
+        </Link>
         <div className="bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-6 rounded-md shadow-lg mt-10" role="alert">
           <div className="flex">
             <div className="py-1"><ExclamationTriangleIcon className="h-8 w-8 text-red-500 dark:text-red-400 mr-4" /></div>
             <div>
               <p className="font-bold text-lg">Error Loading Profile</p>
               <p className="text-sm mt-1">
-                Could not load profile for "{rawHandleFromQuery}".<br />
-                Details: {profileError.message}
+                Could not load data for "{Array.isArray(rawHandleFromQuery) ? rawHandleFromQuery[0] : rawHandleFromQuery}".<br />
+                Details: {error.message}
               </p>
             </div>
           </div>
@@ -105,83 +162,84 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  if (!profileData) { // Hook finished, no error, but no profile data (e.g., profile not found)
+  // Handle profile not found (after loading, profile is still null)
+  if (!isLoadingProfile && !profile) {
     return (
-        <main className="max-w-3xl mx-auto p-4 text-center">
-           <Link href="/explore" legacyBehavior>
-             <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
-                ← Back to Explore
-             </a>
-           </Link>
-           <div className="bg-sky-100 dark:bg-sky-900/50 border-l-4 border-sky-500 text-sky-700 dark:text-sky-300 p-6 rounded-md shadow-lg mt-10" role="alert">
-             <div className="flex">
-               <div className="py-1"><InformationCircleIcon className="h-8 w-8 text-sky-500 dark:text-sky-400 mr-4" /></div>
-               <div>
-                 <p className="font-bold text-lg">Profile Not Found</p>
-                 <p className="text-sm mt-1">The profile "@{rawHandleFromQuery}" could not be found on Lens Protocol.</p>
-               </div>
-             </div>
-           </div>
-        </main>
+      <main className="max-w-3xl mx-auto p-4 text-center">
+        <Link href="/" legacyBehavior>
+          <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
+            ← Back to Kintask Home
+          </a>
+        </Link>
+        <div className="bg-sky-100 dark:bg-sky-900/50 border-l-4 border-sky-500 text-sky-700 dark:text-sky-300 p-6 rounded-md shadow-lg mt-10" role="alert">
+          <div className="flex">
+            <div className="py-1"><InformationCircleIcon className="h-8 w-8 text-sky-500 dark:text-sky-400 mr-4" /></div>
+            <div>
+              <p className="font-bold text-lg">Profile Not Found</p>
+              <p className="text-sm mt-1">The profile "@{Array.isArray(rawHandleFromQuery) ? rawHandleFromQuery[0] : rawHandleFromQuery}" could not be found.</p>
+            </div>
+          </div>
+        </div>
+      </main>
     );
   }
 
-  // --- Profile Display ---
+  // If profile is loaded, render its details and publications section
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
       <Link href="/" legacyBehavior>
-          <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
-            ← Back to Explore
-          </a>
+        <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
+          ← Back to Kintask Home
+        </a>
       </Link>
 
-      <ProfileView profile={profileData} /> {/* Pass the fetched profile data */}
+      {profile && <ProfileView profile={profile} />}
 
       <div className="mt-12">
         <h2 className="text-2xl md:text-3xl font-semibold mb-6 text-gray-800 dark:text-gray-200">
-          Recent Posts
+          Recent Posts by {profile?.username?.fullHandle || profile?.address.substring(0,6) + "..."}
         </h2>
-        {isLoadingPublications && !postsToDisplay.length && (
-            <div className="text-center py-8">
-                <p className="text-gray-500 dark:text-gray-400 animate-pulse">Loading posts...</p>
-            </div>
-        )}
-        {publicationsError && (
-          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 p-4 rounded-md shadow-sm" role="alert">
-            <p className="font-medium text-sm">Error loading posts:</p>
-            <p className="text-xs">{publicationsError.message}</p>
-          </div>
-        )}
-        {!isLoadingPublications && !publicationsError && postsToDisplay.length === 0 && (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            <InformationCircleIcon className="h-16 w-16 mx-auto mb-3 opacity-30" />
-            <p className="text-lg">This profile hasn't made any posts yet.</p>
-          </div>
-        )}
 
-        {postsToDisplay.length > 0 && (
+        {isLoadingPublications && publications.length === 0 && (
           <div className="space-y-6">
-            {postsToDisplay.map((pub) => (
-              <PublicationCard key={pub.id} publication={pub as PostFragment} />
+            {[...Array(3)].map((_, i) => (
+              <QuestionCardSkeleton key={`pub-skeleton-${i}`} />
             ))}
           </div>
         )}
 
-        {/* Load More Button for Publications */}
-        {hasMorePublications && fetchNextPublications && (
-            <div className="text-center mt-8">
-                <button
-                    onClick={async () => {
-                        try { await fetchNextPublications(); }
-                        catch (e: any) { console.error("Failed to fetch next page of publications:", e.message); }
-                    }}
-                    disabled={isLoadingPublications}
-                    className="px-6 py-2 bg-kintask-blue text-white font-semibold rounded-lg hover:bg-kintask-blue-dark focus:outline-none focus:ring-2 focus:ring-kintask-blue focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                    {isLoadingPublications ? 'Loading More...' : 'Load More Posts'}
-                </button>
-            </div>
+        {!isLoadingPublications && error && error.type === 'publications' && (
+           <div className="bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-md shadow-md" role="alert">
+             <p className="font-bold">Error Loading Publications</p>
+             <p className="text-sm">{error.message}</p>
+           </div>
         )}
+
+        {!isLoadingPublications && !error && publications.length === 0 && (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <InformationCircleIcon className="h-16 w-16 mx-auto mb-3 opacity-30" />
+            <p className="text-lg">This profile hasn't made any posts matching the criteria yet.</p>
+          </div>
+        )}
+
+        {!isLoadingPublications && publications.length > 0 && (
+          <div className="space-y-6">
+            {publications.map((pub) => (
+              <PublicationCard key={pub.id} pub={pub} />
+            ))}
+          </div>
+        )}
+
+        {/* TODO: Implement "Load More" button using publicationsPageInfo and another fetchPosts call */}
+        {/* Example:
+        {publicationsPageInfo?.next && !isLoadingPublications && (
+          <div className="text-center mt-8">
+            <button onClick={loadMorePublications} disabled={isLoadingMorePublications} className="...">
+              {isLoadingMorePublications ? 'Loading...' : 'Load More'}
+            </button>
+          </div>
+        )}
+        */}
       </div>
     </div>
   );
