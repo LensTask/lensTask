@@ -4,10 +4,19 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
 import { ConnectKitButton } from 'connectkit';
+import { fetchAccount,fetchAccountsBulk,createAccountWithUsername } from "@lens-protocol/client/actions";
+import { handleOperationWith } from "@lens-protocol/client/viem";
+import { evmAddress } from "@lens-protocol/client";
+import { uri } from "@lens-protocol/client";
+
+import { account } from "@lens-protocol/metadata";
+import { useWalletClient } from 'wagmi';
 
 // --- Lens Client SDK V2 Imports ---
 import { login } from "@lens-protocol/client/actions"; // Assuming `login` handles onboarding
 import { client } from "../lib/client"; // Your Lens SDK V2 client instance
+import { storageClient } from "../lib/storage-client";
+
 // import { evmAddress, Profile } from "@lens-protocol/client"; // For typing if needed
 // --- End Lens Imports ---
 
@@ -22,12 +31,17 @@ const LENS_APP_ADDRESS = "0xaC19aa2402b3AC3f9Fe471D4783EC68595432465"; // Using 
 export default function ProfileCreator() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { data: walletClient } = useWalletClient();
 
   const { address, isConnected, isConnecting } = useAccount();
   const { signMessageAsync } = useSignMessage();
 
   const [activeLensProfile, setActiveLensProfile] = useState<ActiveLensProfile | null>(null);
   const [isCheckingLensSession, setIsCheckingLensSession] = useState(true);
+  const [sessionClient, setSessionClient] = useState();
+  const [usernameSignUp, setUsernameSignUp] = useState();
+
+  const [showSignUpForm, setSignUpFormActive] = useState(false);
 
   useEffect(() => {
     const checkCurrentLensSession = async () => {
@@ -37,20 +51,29 @@ export default function ProfileCreator() {
         try {
           // Check if the client is already authenticated (V2 might manage this internally)
           // This is a conceptual check; your SDK might have a direct method.
-          if (client.authentication.isAuthenticated()) {
-            const currentProfile = await client.authentication.getProfile();
-            if (currentProfile) {
-              setActiveLensProfile({
-                id: currentProfile.id,
-                handle: currentProfile.handle ? { ...currentProfile.handle } : null
-              });
-              setFeedback(`✅ Welcome back, @${currentProfile.handle?.fullHandle || currentProfile.id}!`);
-              setIsCheckingLensSession(false);
-              return;
-            }
+          const result = await fetchAccount(client, {
+            address: evmAddress(address as `0x${string}`),
+          });
+          
+          if (result.isErr()) {
+            return console.error(result.error);
           }
+          
+          const account = result.value;
+          console.log(account)
+          if(!account?.username){
+            setIsCheckingLensSession(false);
+            setActiveLensProfile(null);
+            setFeedback(`You need to create a profile!`);
+            return;
+          }
+          setActiveLensProfile({
+            id: account.username,
+            handle: null
+          });
+          setFeedback(`✅ Welcome back, @${account?.username}!`);
+          setIsCheckingLensSession(false);
           // If not authenticated or no profile in session, clear it
-          setActiveLensProfile(null);
           setFeedback(isConnected ? "Wallet connected. You can login with Lens." : "Please connect your wallet.");
         } catch (e: any) {
           console.warn("[ProfileCreator] Error checking existing Lens auth state:", e.message);
@@ -68,6 +91,31 @@ export default function ProfileCreator() {
     checkCurrentLensSession();
   }, [isConnected, address]);
 
+  const handleProfileCreation = async () => {
+    const metadata = account({
+      name: usernameSignUp,
+    });
+    
+    console.log(sessionClient)
+    const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
+    console.log(uriResult)
+    console.log(walletClient)
+    const result = await createAccountWithUsername(sessionClient, {
+      username: { localName: usernameSignUp },
+      metadataUri: uri(uriResult)
+    })
+      .andThen(handleOperationWith(walletClient))
+      .andThen(sessionClient.waitForTransaction)
+      .andThen(async (txHash) => {
+        console.log(sessionClient)
+        console.log(txHash)
+        const t = await fetchAccount(sessionClient, { txHash })
+        console.log(t);
+        return(t)
+      });
+    console.log(result)
+  }
+
 
   const handleLoginOrCreateWithLens = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +129,16 @@ export default function ProfileCreator() {
     console.log(`[ProfileCreator] Attempting Lens login/onboarding for address: ${address}`);
     setFeedback(`Processing with Lens Protocol for wallet: ${address.substring(0,6)}...`);
     setIsLoading(true);
+    if(usernameSignUp && sessionClient){
+      try{
+        handleProfileCreation();
+      } catch(err){
+        console.log(err)
+      }
+      setIsLoading(false)
 
+      return;
+    }
     try {
       // Using the login structure you provided
       const loginResult = await client.login({
@@ -97,18 +154,12 @@ export default function ProfileCreator() {
       if (!loginResult.isErr()) {
         // The `loginResult.value` is the authenticated LensClient instance
         // We need to get the profile from this authenticated client.
-        const sessionClient = loginResult.value;
-        console.log(sessionClient)
-        const currentProfileData = await sessionClient.authentication.getProfile();
 
-        if (currentProfileData) {
-          console.log("[ProfileCreator] Lens login/onboarding successful. Profile:", currentProfileData);
-          setFeedback(`✅ Success! Active profile: @${currentProfileData.handle?.fullHandle || currentProfileData.id}.`);
-          setActiveLensProfile({
-              id: currentProfileData.id,
-              handle: currentProfileData.handle ? { ...currentProfileData.handle } : null
-          });
-        } else {
+        setSessionClient(loginResult.value);
+        if(!activeLensProfile){
+          // Show form to create profile
+          setSignUpFormActive(true);
+        }  else {
           // This case should ideally not happen if login was successful and implies onboarding
           // or a default profile was expected.
           console.error("[ProfileCreator] Login succeeded but no profile returned in session Client.");
@@ -170,6 +221,34 @@ export default function ProfileCreator() {
         <br/>
         {feedback || "Click below to sign in with Lens or create a new profile."}
       </p>
+      {
+        showSignUpForm &&
+        <form className="space-y-4 border-b dark:border-slate-700 pb-6 mb-6">
+        <h4 className="text-lg font-medium text-gray-800 dark:text-slate-200">Create a New Lens Profile</h4>
+        <div>
+          <label htmlFor="lensHandle" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+            Desired Handle (e.g., yourname)
+          </label>
+          <input
+            type="text"
+            id="lensHandle"
+            value={usernameSignUp}
+            onChange={(e) => setUsernameSignUp(e.target.value)}
+            name="lensHandle"
+            placeholder="yourcoolhandle"
+            className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+            pattern="[a-z0-9-_]{5,31}"
+            title="5-31 chars, lowercase letters, numbers, hyphens, underscores."
+          />
+           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Choose a unique handle for your new profile (5-31 chars, a-z, 0-9, -, _).
+          </p>
+        </div>
+        <div>
+  
+        </div>
+      </form>
+      }
       <form onSubmit={handleLoginOrCreateWithLens} className="space-y-4">
         {/* Removed handle input as the provided login flow doesn't use it directly */}
         {/* If you want to specify a handle for creation, client.login might need different params or you'd use client.createProfile first */}
@@ -194,9 +273,11 @@ export default function ProfileCreator() {
                     </svg>
                     Processing with Lens...
                 </>
-            ) : (
-                'Login / Create Lens Profile'
-            )}
+            ) : 
+             sessionClient && !activeLensProfile ?
+             "Sign Up" : 
+              'Login / Create Lens Profile'
+            }
           </button>
         </div>
       </form>
