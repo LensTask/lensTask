@@ -25,6 +25,7 @@ export const AccountFragment = graphql(
       metadata {
         ...AccountMetadata
       }
+      owner
     }
   `,
   [UsernameFragment, AccountMetadataFragment]

@@ -2,6 +2,14 @@
 'use client'; // Keep if planning client-side interactions later
 
 import { useState } from 'react';
+import { textOnly } from "@lens-protocol/metadata";
+import { storageClient } from "../lib/storage-client";
+import { post,fetchAccount,fetchAccountsAvailable,createAccountWithUsername } from "@lens-protocol/client/actions";
+import { uri } from "@lens-protocol/client";
+import { useAccount, useSignMessage,useWalletClient } from 'wagmi';
+import { client } from "../lib/client"; // Your Lens SDK V2 client instance
+import { evmAddress } from "@lens-protocol/client";
+
 
 // Constants (can be moved to a config file later)
 const APP_ID = 'test-lens1'; // Or your Kintask App ID
@@ -10,15 +18,15 @@ export default function SimplePostCreator() {
   const [content, setContent] = useState('');
   const [uiFeedback, setUiFeedback] = useState<string | null>(null);
   const [isPosting, setIsPosting] = useState(false); // Local loading state
+  const { address, isConnected, isConnecting } = useAccount();
+  const { signMessageAsync } = useSignMessage();
 
   // --- Simulated State (to be replaced by actual Lens/wallet state) ---
-  const SIMULATED_IS_LOGGED_IN_WITH_PROFILE = false; // CHANGE TO true TO SIMULATE LOGGED IN
   const SIMULATED_PROFILE_HANDLE = "yourprofile.test"; // Example handle
   const SIMULATED_PROFILE_ID = "0x01"; // Example profile ID
   // --- End Simulated State ---
 
-  const isLoggedInWithProfile = SIMULATED_IS_LOGGED_IN_WITH_PROFILE; // Use simulated value
-  const activeProfileInfo = isLoggedInWithProfile
+  const activeProfileInfo = isConnected
     ? { handle: SIMULATED_PROFILE_HANDLE, id: SIMULATED_PROFILE_ID }
     : null;
 
@@ -26,8 +34,32 @@ export default function SimplePostCreator() {
   const handlePost = async () => {
     setUiFeedback(null); // Clear previous feedback
     console.log('[SimplePostCreator] handlePost triggered.');
-
-    if (!isLoggedInWithProfile || !activeProfileInfo) {
+    const result = await fetchAccountsAvailable(client, {
+      managedBy: evmAddress(address as `0x${string}`),
+      includeOwned: true,
+    });
+    
+    if (result.isErr()) {
+      return console.error(result.error);
+    }
+    console.log(result)
+    console.log(result.value)
+    const account = result.value.items[0].account;
+    console.log(account);
+    const loginResult = await client.login({
+      onboardingUser: {
+        wallet: address as `0x${string}`, // Ensure address is in `0x...` format
+      },
+      signMessage: async (message: string) => {
+        console.log("[ProfileCreator] Signing Lens challenge...");
+        return signMessageAsync({ message }); // Use wagmi's signMessageAsync
+      },
+    });
+    const sessionClient = loginResult.value
+    sessionClient.switchAccount({
+      account: account?.address ?? never("Account not found"),
+    })
+    if (!isConnected || !activeProfileInfo) {
       const msg = '⚠️ Please log in with an active Lens Profile first.';
       setUiFeedback(msg);
       alert("Login/Connect Wallet functionality will be implemented in the Navbar."); // Placeholder
@@ -46,21 +78,13 @@ export default function SimplePostCreator() {
     setIsPosting(true); // Set local loading state
     console.log('[SimplePostCreator] Active Profile ID for post (Simulated):', activeProfileInfo.id);
     console.log('[SimplePostCreator] Content for post:', content);
-
-    // --- SIMULATED POST CREATION ---
-    // Replace this with actual Lens SDK V2 logic:
-    // 1. Create metadata object (text-only, article, image, etc.)
-    // 2. Upload metadata JSON to IPFS/Arweave to get a metadataURI
-    // 3. Call Lens Client SDK V2 `createPost` (or similar action) with the metadataURI
-
-    console.log('[SimplePostCreator] Simulating metadata creation & upload...');
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate metadata prep
-    const simulatedMetadataURI = `ipfs://SIMULATED_METADATA_HASH_FOR_${Date.now()}`;
-    setUiFeedback(`Metadata prepared (Simulated URI: ${simulatedMetadataURI.substring(0, 20)}...)`);
-
-    console.log('[SimplePostCreator] Simulating post submission to Lens Protocol...');
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay for post creation
-
+    const metadata = textOnly({
+      content: content,
+    });
+    
+    const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
+    const resultPost = await post(sessionClient, { contentUri: uri(uriResult) });
+    console.log(resultPost);
     const simulatedSuccess = true; // Change to false to test error path
     const simulatedTxOrPubId = simulatedSuccess ? `0xSIMULATED_TX_OR_PUB_ID_${Date.now()}` : null;
 
@@ -85,7 +109,7 @@ export default function SimplePostCreator() {
     <div className="border p-4 sm:p-6 rounded-lg shadow-md bg-white dark:bg-slate-800 my-6">
       <h2 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">Create a New Lens Post</h2>
 
-      {!isLoggedInWithProfile ? (
+      {!isConnected ? (
         <div className="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 rounded-md text-center">
             <p className="text-sm text-amber-700 dark:text-amber-200">
             Please connect your wallet and sign in with Lens (via Navbar) to create a post.
@@ -121,7 +145,7 @@ export default function SimplePostCreator() {
 
           <button
             onClick={handlePost}
-            disabled={isPosting || !content.trim() || !isLoggedInWithProfile}
+            disabled={isPosting || !content.trim() || !isConnected}
             className="mt-4 px-6 py-2 bg-kintask-blue hover:bg-kintask-blue-dark text-white font-medium rounded-md disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-kintask-blue focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-opacity"
           >
             {isPosting ? (

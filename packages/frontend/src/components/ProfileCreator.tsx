@@ -2,18 +2,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useSignMessage } from 'wagmi';
+import { useAccount, useSignMessage,useWalletClient } from 'wagmi';
 import { ConnectKitButton } from 'connectkit';
 import { fetchAccount,fetchAccountsAvailable,createAccountWithUsername } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { evmAddress } from "@lens-protocol/client";
 import { uri } from "@lens-protocol/client";
+import { never } from "@lens-protocol/client";
 
 import { account } from "@lens-protocol/metadata";
-import { useWalletClient } from 'wagmi';
 
 // --- Lens Client SDK V2 Imports ---
-import { login } from "@lens-protocol/client/actions"; // Assuming `login` handles onboarding
 import { client } from "../lib/client"; // Your Lens SDK V2 client instance
 import { storageClient } from "../lib/storage-client";
 
@@ -62,7 +61,20 @@ export default function ProfileCreator() {
           console.log(result)
           console.log(result.value)
           const account = result.value.items[0].account;
-          console.log(account)
+          console.log(account);
+          const loginResult = await client.login({
+            onboardingUser: {
+              wallet: address as `0x${string}`, // Ensure address is in `0x...` format
+            },
+            signMessage: async (message: string) => {
+              console.log("[ProfileCreator] Signing Lens challenge...");
+              return signMessageAsync({ message }); // Use wagmi's signMessageAsync
+            },
+          });
+          const sessionClient = loginResult.value
+          sessionClient.switchAccount({
+            account: account?.address ?? never("Account not found"),
+          })
           if(!account?.username){
             setIsCheckingLensSession(false);
             setActiveLensProfile(null);
@@ -105,13 +117,12 @@ export default function ProfileCreator() {
     })
       .andThen(handleOperationWith(walletClient))
       .andThen(sessionClient.waitForTransaction)
-      .andThen(async (txHash) => {
-        console.log(sessionClient)
-        console.log(txHash)
-        const t = await fetchAccount(sessionClient, { txHash })
-        console.log(t);
-        return(t)
-      });
+      .andThen(async (txHash) => fetchAccount(sessionClient, { txHash }))
+      .andThen((account) =>
+        sessionClient.switchAccount({
+          account: account?.address ?? never("Account not found"),
+        })
+      );;
     console.log(result)
   }
 
@@ -275,7 +286,7 @@ export default function ProfileCreator() {
             ) : 
              sessionClient && !activeLensProfile ?
              "Sign Up" : 
-              'Login / Create Lens Profile'
+             'Login / Create Lens Profile'
             }
           </button>
         </div>
