@@ -1,51 +1,40 @@
-// components/SimplePostCreator.tsx
-import { useState } from 'react';
-import { useSession, useCreatePost, SessionType } from '@lens-protocol/react-web';
-import { createPostMetadata, MetadataV3 } from '@lens-protocol/metadata'; 
-import { StorageClient, immutable } from '@lens-chain/storage-client';
+// src/components/SimplePostCreator.tsx
+'use client'; // Keep if planning client-side interactions later
 
-const LENS_CHAIN_ID_FOR_ACL = process.env.NODE_ENV === 'development' ? 37111 : 232;
-const APP_ID = 'test-lens-1';
+import { useState } from 'react';
+
+// Constants (can be moved to a config file later)
+const APP_ID = 'test-lens1'; // Or your Kintask App ID
 
 export default function SimplePostCreator() {
   const [content, setContent] = useState('');
   const [uiFeedback, setUiFeedback] = useState<string | null>(null);
+  const [isPosting, setIsPosting] = useState(false); // Local loading state
 
-  const { data: session, loading: sessionLoading } = useSession();
-  const { execute: createPost, loading: isPosting, error: postError } = useCreatePost();
+  // --- Simulated State (to be replaced by actual Lens/wallet state) ---
+  const SIMULATED_IS_LOGGED_IN_WITH_PROFILE = false; // CHANGE TO true TO SIMULATE LOGGED IN
+  const SIMULATED_PROFILE_HANDLE = "yourprofile.test"; // Example handle
+  const SIMULATED_PROFILE_ID = "0x01"; // Example profile ID
+  // --- End Simulated State ---
 
-  // More detailed check for logged-in status
-  const isAuthenticated = session?.authenticated === true;
-  const hasProfile = !!session?.profile;
-  const sessionTypeIsWithProfile = session?.type === SessionType.WithProfile;
-  const isLoggedInWithProfile = isAuthenticated && hasProfile && sessionTypeIsWithProfile;
-
-  console.log(
-    '[SimplePostCreator] Render. Session Loading:', sessionLoading, 
-    '| Is Authenticated (session.authenticated):', isAuthenticated,
-    '| Has Profile (session.profile exists):', hasProfile,
-    '| Session Type is WITH_PROFILE:', sessionTypeIsWithProfile,
-    '| Final isLoggedInWithProfile:', isLoggedInWithProfile,
-    '| Is Posting Hook Loading:', isPosting
-  );
-  if (session) {
-    console.log('[SimplePostCreator] Full Session Data:', JSON.parse(JSON.stringify(session)));
-    console.log('[SimplePostCreator] Session Type from data:', session.type);
-  }
-  if (postError) console.error('[SimplePostCreator] Post Hook Error on Render:', postError);
+  const isLoggedInWithProfile = SIMULATED_IS_LOGGED_IN_WITH_PROFILE; // Use simulated value
+  const activeProfileInfo = isLoggedInWithProfile
+    ? { handle: SIMULATED_PROFILE_HANDLE, id: SIMULATED_PROFILE_ID }
+    : null;
 
 
   const handlePost = async () => {
-    setUiFeedback(null);
+    setUiFeedback(null); // Clear previous feedback
     console.log('[SimplePostCreator] handlePost triggered.');
 
-    if (!isLoggedInWithProfile || !session?.profile) { // Check session.profile explicitly too
-      const msg = '⚠️ Please log in with an active Lens Profile first (see Navbar). Current session may not have an active profile.';
+    if (!isLoggedInWithProfile || !activeProfileInfo) {
+      const msg = '⚠️ Please log in with an active Lens Profile first.';
       setUiFeedback(msg);
-      console.warn(`[SimplePostCreator] ${msg} Session details: ${JSON.stringify(session)}`);
+      alert("Login/Connect Wallet functionality will be implemented in the Navbar."); // Placeholder
+      console.warn(`[SimplePostCreator] ${msg} (Simulated)`);
       return;
     }
-    // ... (rest of handlePost remains the same)
+
     if (!content.trim()) {
       const msg = '⚠️ Post content cannot be empty.';
       setUiFeedback(msg);
@@ -54,120 +43,100 @@ export default function SimplePostCreator() {
     }
 
     setUiFeedback('Preparing post...');
-    console.log('[SimplePostCreator] Active Profile ID for post:', session.profile.id);
+    setIsPosting(true); // Set local loading state
+    console.log('[SimplePostCreator] Active Profile ID for post (Simulated):', activeProfileInfo.id);
     console.log('[SimplePostCreator] Content for post:', content);
 
-    try {
-      const metadata: MetadataV3 = createPostMetadata({
-        appId: APP_ID,
-        content: content,
-        locale: 'en',
-      });
-      console.log('[SimplePostCreator] Generated metadata object:', metadata);
+    // --- SIMULATED POST CREATION ---
+    // Replace this with actual Lens SDK V2 logic:
+    // 1. Create metadata object (text-only, article, image, etc.)
+    // 2. Upload metadata JSON to IPFS/Arweave to get a metadataURI
+    // 3. Call Lens Client SDK V2 `createPost` (or similar action) with the metadataURI
 
-      const storage = StorageClient.create();
-      setUiFeedback('Uploading metadata to Grove via @lens-chain/storage-client...');
-      console.log('[SimplePostCreator] Initiating metadata upload...');
-      
-      const { uri, anError } = await storage.uploadJson(metadata, {
-        acl: immutable(LENS_CHAIN_ID_FOR_ACL),
-      });
+    console.log('[SimplePostCreator] Simulating metadata creation & upload...');
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate metadata prep
+    const simulatedMetadataURI = `ipfs://SIMULATED_METADATA_HASH_FOR_${Date.now()}`;
+    setUiFeedback(`Metadata prepared (Simulated URI: ${simulatedMetadataURI.substring(0, 20)}...)`);
 
-      if (anError) {
-        console.error('[SimplePostCreator] Error uploading JSON to Grove:', anError);
-        setUiFeedback(`❌ Error uploading metadata: ${anError.message}`);
-        return;
-      }
-      
-      console.log('[SimplePostCreator] Metadata successfully uploaded. URI:', uri);
-      setUiFeedback(`Metadata URI: ${uri}`);
+    console.log('[SimplePostCreator] Simulating post submission to Lens Protocol...');
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay for post creation
 
-      setUiFeedback('Submitting post to Lens Protocol...');
-      console.log('[SimplePostCreator] Calling createPost hook with metadata URI:', uri);
-      
-      const result = await createPost({
-        metadata: uri,
-      });
+    const simulatedSuccess = true; // Change to false to test error path
+    const simulatedTxOrPubId = simulatedSuccess ? `0xSIMULATED_TX_OR_PUB_ID_${Date.now()}` : null;
 
-      console.log('[SimplePostCreator] createPost hook result:', JSON.parse(JSON.stringify(result)));
-
-      if (result.isSuccess()) {
-        const successValue = result.value;
-        let txInfo = '';
-        if (typeof successValue === 'object' && successValue !== null) {
-            if ('txHash' in successValue && successValue.txHash) {
-                 txInfo = `On-chain Tx Hash: ${successValue.txHash}`;
-            } else if ('id' in successValue && successValue.id) {
-                 txInfo = `Publication ID (Momoka): ${successValue.id}`;
-            } else if ('reason' in successValue && typeof successValue.reason === 'string') {
-                 txInfo = `Optimistic Failure Reason: ${successValue.reason}`;
-            } else {
-                 txInfo = "Submission processed.";
-            }
-        } else {
-            txInfo = "Submission status unclear.";
-        }
-        
-        const finalMsg = `✅ Post submitted! ${txInfo}`;
-        setUiFeedback(finalMsg);
-        console.log(`[SimplePostCreator] ${finalMsg}`);
-        setContent('');
-      } else {
-        const errorMsg = result.error.message || "Unknown error during post creation.";
-        setUiFeedback(`❌ Error creating post: ${errorMsg}`);
-        console.error('[SimplePostCreator] Failed to create post. SDK Error:', result.error);
-      }
-    } catch (e: any) {
-      const errorMsg = e.message || "An unexpected error occurred during the posting process.";
-      setUiFeedback(`❌ Unexpected error: ${errorMsg}`);
-      console.error('[SimplePostCreator] Exception in handlePost:', e);
+    if (simulatedSuccess && simulatedTxOrPubId) {
+      const finalMsg = `✅ Post submitted! (Simulated - ID/Tx: ${simulatedTxOrPubId.substring(0, 12)}...). Refresh feed to see.`;
+      setUiFeedback(finalMsg);
+      console.log(`[SimplePostCreator] ${finalMsg}`);
+      setContent(''); // Clear input on success
+    } else {
+      const simulatedErrorMessage = "Simulated error: Failed to create post.";
+      setUiFeedback(`❌ Error creating post: ${simulatedErrorMessage}`);
+      console.error('[SimplePostCreator] Simulated post creation failed.');
     }
+    // --- END SIMULATED POST CREATION ---
+
+    setIsPosting(false); // Reset local loading state
   };
 
-  if (sessionLoading) {
-    return <div className="border p-4 rounded text-center"><p>Loading session...</p></div>;
-  }
 
-  // UI Rendering
+  // --- UI Rendering ---
   return (
-    <div className="border p-4 rounded-lg shadow-md bg-white dark:bg-gray-800 my-6">
-      <h2 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">Create a New Post (on Lens Testnet)</h2>
-      
+    <div className="border p-4 sm:p-6 rounded-lg shadow-md bg-white dark:bg-slate-800 my-6">
+      <h2 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">Create a New Lens Post</h2>
+
       {!isLoggedInWithProfile ? (
-        <p className="text-amber-600 dark:text-amber-400">
-          Please connect your wallet (MetaMask) and log in with your Lens Profile using the buttons in the navigation bar to create a post.
-          <br />
-          <span className="text-xs italic">(Debug: Authenticated: {String(isAuthenticated)}, Has Profile in Session: {String(hasProfile)}, Session Type: {session?.type || 'N/A'})</span>
-        </p>
+        <div className="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 rounded-md text-center">
+            <p className="text-sm text-amber-700 dark:text-amber-200">
+            Please connect your wallet and sign in with Lens (via Navbar) to create a post.
+            </p>
+             <button
+                onClick={() => alert("Connect Wallet/Login functionality will be in the Navbar.")}
+                className="mt-2 px-4 py-1.5 bg-kintask-blue text-white text-xs font-medium rounded-md hover:bg-kintask-blue-dark transition-colors"
+            >
+                Connect/Login (Placeholder)
+            </button>
+        </div>
       ) : (
         <>
           <textarea
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors placeholder-gray-400 dark:placeholder-gray-500"
+            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-kintask-blue focus:border-kintask-blue transition-colors placeholder-gray-400 dark:placeholder-gray-500 disabled:opacity-50"
             rows={4}
-            placeholder={session.profile?.handle?.fullHandle ? `What's on your mind, @${session.profile.handle.localName}?` : `What's on your mind, ${session.profile?.id}?`}
+            placeholder={activeProfileInfo?.handle ? `What's on your mind, @${activeProfileInfo.handle.split('.')[0]}?` : `What's on your mind?`}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             disabled={isPosting}
+            aria-label="Post content"
           />
-          
+
           {uiFeedback && (
-            <p className={`mt-2 text-sm ${(postError && !uiFeedback.startsWith('✅')) || uiFeedback.startsWith('❌') || uiFeedback.startsWith('⚠️') ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+            <p className={`mt-2 text-sm p-2 rounded-md ${
+                uiFeedback.startsWith('❌') || uiFeedback.startsWith('⚠️')
+                  ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                  : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+              }`}>
               {uiFeedback}
-            </p>
-          )}
-          {postError && !uiFeedback?.startsWith('❌') && ( 
-            <p className="mt-2 text-sm text-red-500 dark:text-red-400">
-              Hook Error: {postError.message}
             </p>
           )}
 
           <button
             onClick={handlePost}
             disabled={isPosting || !content.trim() || !isLoggedInWithProfile}
-            className="mt-4 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-opacity"
+            className="mt-4 px-6 py-2 bg-kintask-blue hover:bg-kintask-blue-dark text-white font-medium rounded-md disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-kintask-blue focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-opacity"
           >
-            {isPosting ? 'Posting...' : 'Create Post'}
+            {isPosting ? (
+                 <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Posting...
+                </>
+            ) : 'Create Post'}
           </button>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+            Posts are published on the Lens Protocol Testnet.
+          </p>
         </>
       )}
     </div>

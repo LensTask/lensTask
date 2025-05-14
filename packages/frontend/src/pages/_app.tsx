@@ -12,9 +12,9 @@ import { bindings as wagmiLensBindings } from '@lens-protocol/wagmi';
 import { WagmiProvider } from 'wagmi';
 import { ConnectKitProvider } from 'connectkit';
 
-import { wagmiConfig as appWagmiConfig } from '@/lib/wagmi';
+import { wagmiConfig as appWagmiConfig } from '@/lib/appWagmiConfig';
 import Navbar from '@/components/Navbar';
-
+import { Web3Provider } from '@/components/Web3Provider';
 const queryClient = new QueryClient();
 
 // Determine Lens environment based on Node environment
@@ -27,15 +27,11 @@ const lensProviderConfig: LensConfig = {
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <WagmiProvider config={appWagmiConfig}>
+    <Web3Provider>
       <QueryClientProvider client={queryClient}>
-        <ConnectKitProvider theme="auto">
-          <LensProvider config={lensProviderConfig}>
-            <Navbar />
-            <Component {...pageProps} />
-          </LensProvider>
-        </ConnectKitProvider>
+      <Navbar />
+      <Component {...pageProps} />
       </QueryClientProvider>
-    </WagmiProvider>
+    </Web3Provider>
   );
 }

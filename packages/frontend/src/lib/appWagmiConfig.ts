@@ -12,7 +12,7 @@ export const activeChainForApp = process.env.NODE_ENV === 'development'
   ? lensSDKChainsFromLensChainSDK.testnet
   : lensSDKChainsFromLensChainSDK.mainnet;
 
-// Other chains you might want to support in ConnectKit modal for switching
+  // Other chains you might want to support in ConnectKit modal for switching
 const otherSupportedChainsForApp = process.env.NODE_ENV === 'development'
   ? [lensSDKChainsFromLensChainSDK.mainnet] // In dev, show option to switch to Lens Mainnet
   : [lensSDKChainsFromLensChainSDK.testnet]; // In prod, show option to switch to Lens Testnet
