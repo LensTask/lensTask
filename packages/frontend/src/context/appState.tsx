@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx  (or your preferred path)
+// src/contexts/AuthContext.tsx
 "use client"; // <-- VERY IMPORTANT FOR NEXT.JS APP ROUTER
 
 import React, {
@@ -14,26 +14,20 @@ import { useAccount } from 'wagmi';
 import useSessionClient from "../lib/useSessionClient"; // Ensure this path is correct
 
 // --- Define Types ---
-// Replace 'any' with actual specific types from your libraries for better type safety
 interface LensProfile {
-  // Example: id: string; handle: string; did: string;
   [key: string]: any;
 }
 
 interface SessionClient {
-  // Example: isAuthenticated(): Promise<boolean>; getProfile(): Promise<LensProfile | null>;
   [key: string]: any;
 }
 
 interface AuthContextType {
   stateSessionClient: SessionClient | null;
   stateActiveLensProfile: LensProfile | null;
-  isLoadingSession: boolean; // Added for better UX
-  // You might want to expose the check function if components need to trigger it manually
-  // refreshSession: () => Promise<void>;
+  isLoadingSession: boolean;
 }
 
-// Initialize with undefined to robustly check if used outside a provider
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
@@ -43,7 +37,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [stateSessionClient, setStateSessionClient] = useState<SessionClient | null>(null);
   const [stateActiveLensProfile, setStateActiveLensProfile] = useState<LensProfile | null>(null);
-  const [isLoadingSession, setIsLoadingSession] = useState<boolean>(true); // Start as true
+  const [isLoadingSession, setIsLoadingSession] = useState<boolean>(true);
 
   const { address, isConnected } = useAccount(); // isConnected can be useful
 
@@ -53,39 +47,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkCurrentLensSession,
   } = useSessionClient(); // Assuming this hook provides these
 
-  useMemo(async () => {
+  // --- DEBUG LOGS ---
+  const log = (...args: any[]) => console.log('[appstate]', ...args);
 
-    // Only attempt to check session if connected and checkCurrentLensSession is available
+  log('AuthProvider render:', { address, isConnected, sessionClient, activeLensProfile });
+
+  useMemo(async () => {
+    log('useMemo called with address:', address);
+
     if (address) {
+      log('Wallet address present. Starting Lens session check.');
       setIsLoadingSession(true);
-      await checkCurrentLensSession();
+      if (typeof checkCurrentLensSession === "function") {
+        try {
+          await checkCurrentLensSession();
+          log('checkCurrentLensSession finished');
+        } catch (err) {
+          log('Error in checkCurrentLensSession', err);
+        }
+      } else {
+        log('checkCurrentLensSession is not a function!');
+      }
       setIsLoadingSession(false);
     } else {
-      // If not connected, clear session data and stop loading
+      log('No address found. Clearing state.');
       setStateSessionClient(null);
       setStateActiveLensProfile(null);
       setIsLoadingSession(false);
     }
-  }, [address]); // Add isConnected and function to dependencies
+  }, [address]); // Only when address changes
 
   useEffect(() => {
+    log('useEffect [sessionClient]', sessionClient);
     if(sessionClient){
       setStateSessionClient(sessionClient);
+      log('stateSessionClient updated:', sessionClient);
     }
   }, [sessionClient]);
 
   useEffect(() => {
-    console.log(activeLensProfile)
+    log('useEffect [activeLensProfile]', activeLensProfile);
     if(activeLensProfile){
       setStateActiveLensProfile(activeLensProfile);
+      log('stateActiveLensProfile updated:', activeLensProfile);
     }
   }, [activeLensProfile]);
+
+  useEffect(() => {
+    log('isLoadingSession changed:', isLoadingSession);
+  }, [isLoadingSession]);
 
   const contextValue: AuthContextType = {
     stateSessionClient,
     stateActiveLensProfile,
     isLoadingSession,
   };
+
+  log('Providing AuthContext value:', contextValue);
 
   return (
     <AuthContext.Provider value={contextValue}>
@@ -99,5 +117,6 @@ export const useAuth = (): AuthContextType => {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+  console.log('[appstate] useAuth hook called:', context);
   return context;
 };

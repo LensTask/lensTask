@@ -13,6 +13,8 @@ import { textOnly } from "@lens-protocol/metadata";
 
 const useSessionClient = () => {
   const { address, isConnected } = useAccount();
+  console.log('[useSessionClient] useAccount', { address, isConnected });
+
   const { signMessageAsync } = useSignMessage();
   const { data: walletClient } = useWalletClient();
   const [sessionClient, setSessionClient] = useState();

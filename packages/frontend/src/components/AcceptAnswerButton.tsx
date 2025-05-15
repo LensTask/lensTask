@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { lensClient } from "@/lib/lensClient";
+// import { lensClient } from "@/lib/lensClient";
 import { useMutation } from "@tanstack/react-query";
 import { signTypedData, getWalletClient } from "@wagmi/core";
-import { encodeAbiParameters, parseAbiParameters, AbiParametersToPrimitiveTypes } from "viem";
+import { encodeAbiParameters, parseAbiParameters } from "viem";
 import { useConfig } from 'wagmi';
 import { bountyCollectModuleAddress, chainId as localChainId } from '@/lib/contractAddresses';
-import { ProfileId } from '@lens-protocol/client';
+// import { ProfileId } from '@lens-protocol/client';
 
 /* ------------------------------------------------------------------ */
 /* TODO: Verify this EIP-712 struct against the Hub version you use.   */
