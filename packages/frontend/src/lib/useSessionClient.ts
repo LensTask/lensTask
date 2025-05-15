@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 
 import { post, fetchAccount, fetchAccountsAvailable, createAccountWithUsername } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
@@ -15,7 +15,6 @@ const useSessionClient = () => {
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const { data: walletClient } = useWalletClient();
-
   const [sessionClient, setSessionClient] = useState();
   const [activeLensProfile, setActiveLensProfile] = useState(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -67,7 +66,6 @@ const useSessionClient = () => {
       }
       currentClient = loginResult.value;
       log('Login succeeded, obtained new session client.');
-
       setSessionClient(currentClient);
       // Fetch existing Lens accounts for this wallet
       const result = await fetchAccountsAvailable(client, {
@@ -199,10 +197,9 @@ const useSessionClient = () => {
       log('Login/onboarding flow complete.');
     }
   };
-  const handlePost = async (content) => {
+  const handlePost = async (content,sessionClient,activeLensProfile) => {
     setFeedback(null); // Clear previous feedback
     console.log('[SimplePostCreator] handlePost triggered.');
-    console.log(sessionClient)
     if(!sessionClient) return;
     if (!isConnected || !activeLensProfile) {
       const msg = '⚠️ Please log in with an active Lens Profile first.';

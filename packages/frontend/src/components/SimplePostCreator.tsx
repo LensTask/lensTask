@@ -24,6 +24,7 @@ export default function SimplePostCreator() {
 
   // --- GET AUTH STATE FROM CONTEXT ---
   const {
+    stateSessionClient,
     stateActiveLensProfile, // This now comes from your global context
     isLoadingSession        // To know if the session (and profile) is still being loaded
   } = useAuth();
@@ -105,7 +106,7 @@ export default function SimplePostCreator() {
               if (stateActiveLensProfile) { // Ensure profile is still there before posting
                 // The handlePost function from useSessionClient likely uses the
                 // active profile and sessionClient it has internally.
-                await handlePost(content); // Call the action from useSessionClient
+                await handlePost(content,stateSessionClient,stateActiveLensProfile); // Call the action from useSessionClient
                 setContent(''); // Clear input on presumed success (handlePost should manage feedback)
               } else {
                 // This case should ideally be prevented by the UI rendering conditions
