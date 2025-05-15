@@ -52,23 +52,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   log('AuthProvider render:', { address, isConnected, sessionClient, activeLensProfile });
 
-  useMemo(async () => {
+  useEffect(() => {
     log('useMemo called with address:', address);
-
+    alert(address)
     if (address) {
       log('Wallet address present. Starting Lens session check.');
       setIsLoadingSession(true);
-      if (typeof checkCurrentLensSession === "function") {
-        try {
-          await checkCurrentLensSession();
-          log('checkCurrentLensSession finished');
-        } catch (err) {
-          log('Error in checkCurrentLensSession', err);
-        }
-      } else {
-        log('checkCurrentLensSession is not a function!');
-      }
-      setIsLoadingSession(false);
+      setStateActiveLensProfile(null)
+      checkCurrentLensSession().then(() => {
+        setIsLoadingSession(false);
+      });
     } else {
       log('No address found. Clearing state.');
       setStateSessionClient(null);

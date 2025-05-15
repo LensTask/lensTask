@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 
-import { post, fetchAccount, fetchAccountsAvailable, createAccountWithUsername } from "@lens-protocol/client/actions";
+import { post, fetchAccount, fetchAccountsAvailable, createAccountWithUsername,currentSession } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { evmAddress, SessionClient } from "@lens-protocol/client";
 import { uri } from "@lens-protocol/client";
@@ -54,14 +54,20 @@ const useSessionClient = () => {
 
       let currentClient;
       const resumed = await client.resumeSession();
-
       if (resumed.isErr()) {
-        alert(resumed.error)
         return console.error(resumed.error);
       }
 
       // SessionClient: { ... }
+      
       currentClient = resumed.value;
+      const resumedSessionDetails = await currentSession(currentClient);
+      if(resumedSessionDetails.value.signer.toLowerCase() !== address.toLowerCase()){
+        console.warn("Loging out from previous session")
+        await currentClient.logout();
+        currentClient = null;
+      }
+      console.warn("Making session")
       if(!currentClient){
         const loginResult = await client.login({
           onboardingUser: { wallet: address as `0x${string}` },
@@ -82,7 +88,7 @@ const useSessionClient = () => {
       log('Login succeeded, obtained new session client.');
       setSessionClient(currentClient);
       // Fetch existing Lens accounts for this wallet
-      const result = await fetchAccountsAvailable(client, {
+      const result = await fetchAccountsAvailable(currentClient, {
         managedBy: evmAddress(address as `0x${string}`),
         includeOwned: true,
       });
@@ -97,6 +103,8 @@ const useSessionClient = () => {
       const savedAccount = result.value.items[0]?.account;
       if (!savedAccount) {
         log('No Lens profiles found for this wallet.');
+        setActiveLensProfile(null);
+        setFeedback('You need to create a Lens profile!');
       }
       if (savedAccount) {
         currentClient.switchAccount({ account: savedAccount.address });
