@@ -53,20 +53,32 @@ const useSessionClient = () => {
       //log('resumeSession result:', resumed);
 
       let currentClient;
-      const loginResult = await client.login({
-        onboardingUser: { wallet: address as `0x${string}` },
-        signMessage: async (message: string) => {
-          log('Signing Lens challenge message...');
-          return signMessageAsync({ message });
-        },
-      });
-      if (loginResult.isErr()) {
-        error('Login failed:', loginResult.error.message);
-        setFeedback(`Login error: ${loginResult.error.message}`);
-        setIsCheckingLensSession(false);
-        return;
+      const resumed = await client.resumeSession();
+
+      if (resumed.isErr()) {
+        alert(resumed.error)
+        return console.error(resumed.error);
       }
-      currentClient = loginResult.value;
+
+      // SessionClient: { ... }
+      currentClient = resumed.value;
+      if(!currentClient){
+        const loginResult = await client.login({
+          onboardingUser: { wallet: address as `0x${string}` },
+          signMessage: async (message: string) => {
+            log('Signing Lens challenge message...');
+            return signMessageAsync({ message });
+          },
+        });
+        if (loginResult.isErr()) {
+          error('Login failed:', loginResult.error.message);
+          setFeedback(`Login error: ${loginResult.error.message}`);
+          setIsCheckingLensSession(false);
+          return;
+        }
+        currentClient = loginResult.value;
+      }
+
       log('Login succeeded, obtained new session client.');
       setSessionClient(currentClient);
       // Fetch existing Lens accounts for this wallet
