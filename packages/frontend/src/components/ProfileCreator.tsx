@@ -2,59 +2,60 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useSignMessage,useWalletClient } from 'wagmi';
+import { useAccount } from 'wagmi'; // useSignMessage, useWalletClient removed as not used directly
 import { ConnectKitButton } from 'connectkit';
-import { fetchAccount,fetchAccountsAvailable,createAccountWithUsername } from "@lens-protocol/client/actions";
-import { handleOperationWith } from "@lens-protocol/client/viem";
-import { evmAddress } from "@lens-protocol/client";
-import { uri } from "@lens-protocol/client";
-import { never } from "@lens-protocol/client";
+// Lens client/actions imports remain the same if handleLoginOrCreateWithLens uses them internally
+// import { fetchAccount,fetchAccountsAvailable,createAccountWithUsername } from "@lens-protocol/client/actions";
+// import { handleOperationWith } from "@lens-protocol/client/viem";
+// import { evmAddress } from "@lens-protocol/client";
+// import { uri } from "@lens-protocol/client";
+// import { never } from "@lens-protocol/client";
+// import { account } from "@lens-protocol/metadata";
+// import { client } from "../lib/client";
+// import { storageClient } from "../lib/storage-client";
 
-import { account } from "@lens-protocol/metadata";
+// *** IMPORT YOUR AUTH CONTEXT HOOK ***
+import { useAuth } from '../context/appState'; // Adjust path if needed
 
-import { client } from "../lib/client"; 
-import { storageClient } from "../lib/storage-client";
+// Your custom hook for actions is still very useful
 import useSessionClient from "../lib/useSessionClient";
 
-// import { evmAddress, Profile } from "@lens-protocol/client"; // For typing if needed
-// --- End Lens Imports ---
-
-interface ActiveLensProfile {
-  id: string;
-  handle?: { fullHandle: string; localName: string; namespace: string; } | null;
-}
 
 // ACTION: Replace with your actual Lens App address for the target network
-const LENS_APP_ADDRESS = "0xaC19aa2402b3AC3f9Fe471D4783EC68595432465"; // Using the one from your example
+// const LENS_APP_ADDRESS = "0xaC19aa2402b3AC3f9Fe471D4783EC68595432465"; // Using the one from your example
 
 export default function ProfileCreator() {
-
   const { address, isConnected, isConnecting } = useAccount();
 
+  // *** GET AUTH STATE FROM CONTEXT ***
   const {
-    sessionClient,
+    stateActiveLensProfile, // This now comes from your global context
+    stateSessionClient,  // Also from context, if needed directly here
+    isLoadingSession      // This is the loading state from your context
+  } = useAuth();
+
+  // *** KEEP useSessionClient FOR ACTIONS AND LOCAL UI STATE ***
+  const {
     feedback,
-    activeLensProfile,
-    isCheckingLensSession,
-    isLoading,
+    isLoading: isLoadingAction, // Rename to avoid conflict with context's isLoadingSession
     usernameSignUp,
     setUsernameSignUp,
     handleLoginOrCreateWithLens,
-    checkCurrentLensSession
   } = useSessionClient();
 
   const [showSignUpForm, setSignUpFormActive] = useState(false);
 
-
-
   useEffect(() => {
-    console.log(activeLensProfile)
-    if(!activeLensProfile){
-      setSignUpFormActive(true)
+    // Use the profile from the context
+    if (!stateActiveLensProfile && isConnected && !isLoadingSession) { // Only show form if connected and not loading
+      setSignUpFormActive(true);
+    } else if (stateActiveLensProfile) {
+      setSignUpFormActive(false);
     }
-  },[activeLensProfile]);
+  }, [stateActiveLensProfile, isConnected, isLoadingSession]);
 
-  if (isConnecting || isCheckingLensSession) {
+  // Use isLoadingSession from context for initial loading states
+  if (isConnecting || isLoadingSession) {
     return (
         <div className="my-4 p-4 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-center animate-pulse">
             <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -75,24 +76,31 @@ export default function ProfileCreator() {
      );
   }
 
-  if (activeLensProfile) {
+  // Use stateActiveLensProfile from context
+  if (stateActiveLensProfile) {
+
+    const displayHandle = stateActiveLensProfile.username?.localName;
+
     return (
       <div className="my-4 p-4 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-600 rounded-lg text-center">
         <p className="text-sm text-green-700 dark:text-green-200">
           Welcome! Interacting as: <br />
-          <strong className="font-medium">@{activeLensProfile.username?.localName || activeLensProfile.address}</strong>
+          <strong className="font-medium">@{displayHandle}</strong>
         </p>
+        {/* You could add a logout button here that calls a logout function from useSessionClient or context */}
       </div>
     );
   }
 
-  // Wallet connected, but no active Lens profile session yet. Show Login/Onboard button.
+  // Wallet connected, but no active Lens profile session yet (according to context).
+  // Show Login/Onboard button.
   return (
     <div className="my-6 p-4 sm:p-6 border rounded-lg shadow-md bg-white dark:bg-slate-800">
       <h3 className="text-lg font-semibold mb-1 text-gray-900 dark:text-white">Login or Create Profile with Lens</h3>
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
         Wallet: <code className="text-xs bg-slate-100 dark:bg-slate-700 p-0.5 rounded">{address?.substring(0,6)}...{address?.substring(address.length-4)}</code>.
         <br/>
+        {/* Feedback comes from useSessionClient, which handles actions */}
         {feedback || "Click below to sign in with Lens or create a new profile."}
       </p>
       {
@@ -106,8 +114,8 @@ export default function ProfileCreator() {
           <input
             type="text"
             id="lensHandle"
-            value={usernameSignUp}
-            onChange={(e) => setUsernameSignUp(e.target.value)}
+            value={usernameSignUp} // from useSessionClient
+            onChange={(e) => setUsernameSignUp(e.target.value)} // from useSessionClient
             name="lensHandle"
             placeholder="yourcoolhandle"
             className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
@@ -118,15 +126,9 @@ export default function ProfileCreator() {
             Choose a unique handle for your new profile (5-31 chars, a-z, 0-9, -, _).
           </p>
         </div>
-        <div>
-  
-        </div>
       </form>
       }
       <div className="space-y-4">
-        {/* Removed handle input as the provided login flow doesn't use it directly */}
-        {/* If you want to specify a handle for creation, client.login might need different params or you'd use client.createProfile first */}
-
         {feedback && !(feedback.startsWith("ℹ️") || feedback.startsWith("Processing") || feedback.startsWith("Checking")) && (
           <p className={`text-sm p-2 rounded-md ${feedback.startsWith('✅') ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
             {feedback}
@@ -135,12 +137,12 @@ export default function ProfileCreator() {
 
         <div>
           <button
-            onClick={handleLoginOrCreateWithLens}
-            type="submit" // Changed from onClick to type="submit" for form submission
-            disabled={isLoading || !isConnected } // Only disable if loading or not connected
+            onClick={handleLoginOrCreateWithLens} // from useSessionClient
+            type="button" // Usually "button" if not submitting a traditional form
+            disabled={isLoadingAction || !isConnected } // isLoadingAction from useSessionClient
             className="w-full sm:w-auto inline-flex justify-center items-center px-6 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:bg-slate-400 dark:disabled:bg-slate-500 disabled:text-slate-700 dark:disabled:text-slate-400 disabled:cursor-not-allowed transition-colors duration-150"
           >
-            {isLoading ? (
+            {isLoadingAction ? ( /* Use isLoadingAction from useSessionClient for button's loading state */
                 <>
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -148,10 +150,11 @@ export default function ProfileCreator() {
                     </svg>
                     Processing with Lens...
                 </>
-            ) : 
-             sessionClient && !activeLensProfile ?
-             "Sign Up" : 
-             'Login / Create Lens Profile'
+            ) :
+             // Use stateActiveLensProfile from context to determine button text
+             !stateActiveLensProfile ? // If no profile in context, show sign up/create
+             "Sign Up / Create Profile" :
+             'Login / Create Lens Profile' // This case should ideally not be hit if profile exists
             }
           </button>
         </div>

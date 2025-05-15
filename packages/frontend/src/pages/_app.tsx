@@ -1,6 +1,7 @@
 import '@/styles/globals.css';
 import type { AppProps } from 'next/app';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from '../context/appState'; // Adjust path if needed
 
 import {
   LensProvider,
@@ -28,10 +29,12 @@ const lensProviderConfig: LensConfig = {
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <Web3Provider>
-      <QueryClientProvider client={queryClient}>
-      <Navbar />
-      <Component {...pageProps} />
-      </QueryClientProvider>
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <Navbar />
+          <Component {...pageProps} />
+        </QueryClientProvider>
+      </AuthProvider>
     </Web3Provider>
   );
 }
