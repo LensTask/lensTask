@@ -32,9 +32,9 @@ contract AcceptedAnswerNFT is ERC721, Ownable {
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 firstTokenId,
-        uint256 batchSize
-    ) internal view /* override */ {
+        uint256 /* firstTokenId */,
+        uint256 /* batchSize */
+    ) internal pure /* override */ {
         require(from == address(0) || to == address(0), "AcceptedAnswerNFT: Soulbound, non-transferable");
     }
 }
