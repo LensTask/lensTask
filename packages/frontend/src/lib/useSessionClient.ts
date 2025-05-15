@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 
 import { post, fetchAccount, fetchAccountsAvailable, createAccountWithUsername,currentSession } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
-import { evmAddress, SessionClient } from "@lens-protocol/client";
+import { blockchainData, evmAddress, SessionClient } from "@lens-protocol/client";
 import { uri } from "@lens-protocol/client";
 import { never } from "@lens-protocol/client";
 import { storageClient } from "./storage-client";
@@ -10,9 +10,10 @@ import { client } from "./client";
 import { useAccount, useSignMessage, useWalletClient } from 'wagmi';
 import { account as makeMetadata } from "@lens-protocol/metadata";
 import { textOnly } from "@lens-protocol/metadata";
+import { getNftAddress, getPostActionAddress } from './utils';
 
 const useSessionClient = () => {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chainId } = useAccount();
   console.log('[useSessionClient] useAccount', { address, isConnected });
 
   const { signMessageAsync } = useSignMessage();
@@ -242,8 +243,24 @@ const useSessionClient = () => {
       content: content,
     });
     
+    const postActionData = {
+      unknown: {
+        address: evmAddress(getPostActionAddress(chainId)),
+        params: [
+          {
+            raw: {
+              // 32 bytes key: keccak("nftAddress")
+              key: blockchainData("0x4a0580de8961dc8091b1b1c2d0e1d5fd69c37e2bb2ba23ada6a8099be234de72"),
+              // an ABI encoded value
+              data: blockchainData(getNftAddress(chainId)),
+            },
+          },
+        ],
+      },
+    };
+
     const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
-    const resultPost = await post(sessionClient, { contentUri: uri(uriResult) });
+    const resultPost = await post(sessionClient, { contentUri: uri(uriResult), actions: [postActionData] });
     console.log(resultPost);
     const simulatedSuccess = true; // Change to false to test error path
     const simulatedTxOrPubId = simulatedSuccess ? `0xSIMULATED_TX_OR_PUB_ID_${Date.now()}` : null;
