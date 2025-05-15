@@ -145,9 +145,9 @@ export default function ProfileCreator() {
         )}
         <div>
           <button
-            onClick={() => {
+            onClick={(e) => {
               console.log('[ProfileCreator] Login/Create button clicked');
-              handleLoginOrCreateWithLens();
+              handleLoginOrCreateWithLens(e);
             }}
             type="button"
             disabled={isLoadingAction || !isConnected}
