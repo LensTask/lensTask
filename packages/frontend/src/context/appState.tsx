@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setStateActiveLensProfile(null);
       setIsLoadingSession(false);
     }
-  }, [address]); // Only when address changes
+  }, [address, isConnected]); // Only when address or isConnected changes. We need both because address might already be set when isConnected is still false.
 
   useEffect(() => {
     log('useEffect [sessionClient]', sessionClient);
