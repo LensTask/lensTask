@@ -54,7 +54,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     log('useMemo called with address:', address);
-    alert(address)
     if (address) {
       log('Wallet address present. Starting Lens session check.');
       setIsLoadingSession(true);

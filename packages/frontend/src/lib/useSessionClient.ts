@@ -22,7 +22,6 @@ const useSessionClient = () => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isCheckingLensSession, setIsCheckingLensSession] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [usernameSignUp, setUsernameSignUp] = useState<string>("");
   // Posts //
   const [isPosting, setIsPosting] = useState(false); // Local loading state
 
@@ -131,11 +130,8 @@ const useSessionClient = () => {
     }
   };
 
-  const handleProfileCreation = async () => {
-    if (!sessionClient || !usernameSignUp) {
-      error('Missing session client or username for profile creation.');
-      return;
-    }
+  const handleProfileCreation = async (sessionClient,usernameSignUp) => {
+
 
     log('Creating metadata for username:', usernameSignUp);
     const metadata = makeMetadata({ name: usernameSignUp });
@@ -158,20 +154,20 @@ const useSessionClient = () => {
         return fetchAccount(sessionClient, { txHash });
       })
       .andThen((accountData) => {
-        current:
         sessionClient.switchAccount({ account: accountData?.address ?? never('No account address') });
         setActiveLensProfile(accountData);
         log('Profile creation complete, switched to new account:', accountData?.username.localName);
+        setFeedback(`Profile creation sucessfull`);
+        return accountData
       });
-
-    if (result.isErr()) {
-      error('Error creating profile:', result.error);
-      setFeedback(`Profile creation failed: ${result.error.message}`);
-    }
+      if (!result) {
+        error('Error creating profile:', result.error);
+        setFeedback(`Profile creation failed: ${result.error.message}`);
+      }
   };
 
-  const handleLoginOrCreateWithLens = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLoginOrCreateWithLens = async (sessionClient,usernameSignUp) => {
+
     setFeedback(null);
 
     if (!isConnected || !address) {
@@ -184,9 +180,9 @@ const useSessionClient = () => {
     setIsLoading(true);
 
     try {
-      if (usernameSignUp && sessionClient) {
+      if (usernameSignUp) {
         log('Detected signup username and existing session, creating profile.');
-        await handleProfileCreation();
+        await handleProfileCreation(sessionClient,usernameSignUp);
         return;
       }
 
@@ -274,11 +270,9 @@ const useSessionClient = () => {
     feedback,
     isCheckingLensSession,
     isLoading,
-    usernameSignUp,
     isPosting,
     handlePost,
     setIsPosting,
-    setUsernameSignUp,
     handleLoginOrCreateWithLens,
     handleProfileCreation,
     checkCurrentLensSession,

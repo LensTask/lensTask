@@ -26,13 +26,12 @@ export default function ProfileCreator() {
 
   // LOG: Auth context values
   console.log('[ProfileCreator] useAuth context:', { stateActiveLensProfile, stateSessionClient, isLoadingSession });
+  const [usernameSignUp, setUsernameSignUp] = useState<string>("");
 
   // *** KEEP useSessionClient FOR ACTIONS AND LOCAL UI STATE ***
   const {
     feedback,
     isLoading: isLoadingAction,
-    usernameSignUp,
-    setUsernameSignUp,
     handleLoginOrCreateWithLens,
   } = useSessionClient();
 
@@ -147,7 +146,7 @@ export default function ProfileCreator() {
           <button
             onClick={(e) => {
               console.log('[ProfileCreator] Login/Create button clicked');
-              handleLoginOrCreateWithLens(e);
+              handleLoginOrCreateWithLens(stateSessionClient,usernameSignUp);
             }}
             type="button"
             disabled={isLoadingAction || !isConnected}
@@ -163,8 +162,8 @@ export default function ProfileCreator() {
               </>
             ) :
               !stateActiveLensProfile ?
-                "Sign Up / Create Profile" :
-                'Login / Create Lens Profile'
+                "Create Profile" :
+                'Login Profile'
             }
           </button>
         </div>
