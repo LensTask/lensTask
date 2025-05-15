@@ -37,8 +37,9 @@ contract BountyPostAction is BasePostAction {
         KeyValue[] calldata params
     ) internal override returns (bytes memory) {
         require(
-            originalMsgSender == IFeed(feed).getPostAuthor(postId)
-        ); // Only author can configure
+            originalMsgSender == IFeed(feed).getPostAuthor(postId),
+            "Only author can configure"
+        );
         
         _bountyNftAddress[feed][postId] = abi.decode(params[0].value, (address));
 
@@ -65,8 +66,12 @@ contract BountyPostAction is BasePostAction {
         uint256 postId,
         KeyValue[] calldata params
     ) internal override returns (bytes memory) {
-        require(_bountyNftAddress[feed][postId] != address(0)); // No NFT address configured
-        require(_bountyWinnerAddress[feed][postId] == address(0)); // Bounty winner already assigned
+        require(
+            originalMsgSender == IFeed(feed).getPostAuthor(postId),
+            "Only author can assign bounty winner"
+        );
+        require(_bountyNftAddress[feed][postId] != address(0), "No NFT address configured");
+        require(_bountyWinnerAddress[feed][postId] == address(0), "Bounty winner already assigned");
 
         address bountyWinner = abi.decode(params[0].value, (address));
 
