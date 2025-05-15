@@ -6,5 +6,5 @@
     "outDir": "dist",
     "types": ["node", "hardhat"]
   },
-  "include": ["./scripts", "./test", "./hardhat.config.ts"]
+  "include": ["./test", "./hardhat.config.ts", "deploy/deploy.ts", "deploy/utils.ts"]
 }

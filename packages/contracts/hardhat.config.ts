@@ -12,7 +12,6 @@ const accounts = privateKey && privateKey.length === 66 && privateKey.startsWith
     : []);
 
 const config: HardhatUserConfig = {
-  // hardhat.config.ts
   solidity: {
     version: "0.8.26",
     settings: {
@@ -24,7 +23,7 @@ const config: HardhatUserConfig = {
     version: "1.5.12",
     settings: {
       optimizer: { enabled: true, runs: 200 },
-      // codegen: "evmla",   // <-- remove this line
+      codegen: "yul",
     },
   },
 
@@ -34,27 +33,28 @@ const config: HardhatUserConfig = {
 
     },
     lensTestnet: {
-      url: 'https://rpc.testnet.lens.xyz', //process.env.RPC_URL || "",
+      url: 'https://rpc.testnet.lens.xyz',
+      chainId: 37111,
       accounts: accounts,
       zksync: true,
       ethNetwork: "sepolia",
+      verifyURL: 'https://api-explorer-verify.staging.lens.zksync.dev/contract_verification',
     },
     lensMainnet: {
       url: 'https://rpc.lens.xyz',
+      chainId: 232,
       accounts: accounts,
       zksync: true,
       ethNetwork: "mainnet",
+      verifyURL:
+        "https://api-explorer-verify.lens.matterhosted.dev/contract_verification",
+      
     },
     localhost: {
 
       url: "http://127.0.0.1:8545",
       chainId: 31337,
     },
-    // lensSepolia: {
-    //   url: lensTestnetRpcUrlFromEnv || "https://rpc.testnet.lens.dev",
-    //   chainId: 37111,
-    //   accounts: lensSepoliaAccounts,
-    // }
   },
   paths: {
     artifacts: "./artifacts",
@@ -66,30 +66,6 @@ const config: HardhatUserConfig = {
     outDir: 'typechain-types',
     target: 'ethers-v6',
 
-  },
-  etherscan: {
-    apiKey: {
-      "lensSepolia": process.env.LENS_TESTNET_BLOCKSCOUT_API_KEY || "YOUR_API_KEY_PLACEHOLDER",
-      "lensMainnet": "none",
-    },
-    customChains: [
-      {
-        network: "lensSepolia",
-        chainId: 37111,
-        urls: {
-          apiURL: "https://explorer.testnet.lens.dev/api",
-          browserURL: "https://explorer.testnet.lens.dev"
-        }
-      },
-      {
-        network: "lensMainnet",
-        chainId: 232,
-        urls: {
-          apiURL: "https://explorer-api.lens.xyz/api",
-          browserURL: "https://explorer.lens.xyz"
-        }
-      }
-    ]
   }
 };
 

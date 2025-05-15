@@ -46,6 +46,9 @@ importers:
 
   packages/contracts:
     dependencies:
+      '@matterlabs/hardhat-zksync-deploy':
+        specifier: ^1.7.0
+        version: 1.7.0(encoding@0.1.13)(ethers@6.14.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@22.15.17)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(zksync-ethers@6.17.0(ethers@6.14.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
       '@openzeppelin/contracts':
         specifier: ^5.3.0
         version: 5.3.0
