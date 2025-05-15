@@ -12,27 +12,26 @@ const accounts = privateKey && privateKey.length === 66 && privateKey.startsWith
     : []);
 
 const config: HardhatUserConfig = {
+  // hardhat.config.ts
   solidity: {
     version: "0.8.26",
     settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200,
-      },
-      // No remappings needed with correct imports and pnpm setup
+      viaIR: true,
+      optimizer: { enabled: true, runs: 200 },
     },
   },
   zksolc: {
-    version: "1.5.12",      // pin to the deployment version
+    version: "1.5.12",
     settings: {
-      codegen: "evmla",     // force legacy assembly
-      optimizer: { enabled: true, runs: 200 }
-    }
+      optimizer: { enabled: true, runs: 200 },
+      // codegen: "evmla",   // <-- remove this line
+    },
   },
+
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-   
+
     },
     lensTestnet: {
       url: 'https://rpc.testnet.lens.xyz', //process.env.RPC_URL || "",
