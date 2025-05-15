@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import { IPostAction } from "lens-contracts/contracts/extensions/actions/ActionHub.sol";
-import { KeyValue } from "lens-contracts/contracts/core/types/Types.sol";
-import { BasePostAction } from "lens-contracts/contracts/actions/post/base/BasePostAction.sol";
-import { IFeed } from "lens-contracts/contracts/core/interfaces/IFeed.sol";
+import { IPostAction } from "../lens-contracts/contracts/extensions/actions/ActionHub.sol";
+import { KeyValue } from "../lens-contracts/contracts/core/types/Types.sol";
+import { BasePostAction } from "../lens-contracts/contracts/actions/post/base/BasePostAction.sol";
+import { IFeed } from "../lens-contracts/contracts/core/interfaces/IFeed.sol";
 import { AcceptedAnswerNFT } from "./AcceptedAnswerNFT.sol";
 
 /**
@@ -18,6 +18,8 @@ contract BountyPostAction is BasePostAction {
 
     // feed => postId => bountyWinnerAddress
     mapping(address => mapping(uint256 => address)) private _bountyWinnerAddress;
+
+    constructor(address actionHub) BasePostAction(actionHub) {}
 
     /**
       * @notice Configures the BountyPostAction Action for a given post.
@@ -35,9 +37,8 @@ contract BountyPostAction is BasePostAction {
         KeyValue[] calldata params
     ) internal override returns (bytes memory) {
         require(
-            originalMsgSender == IFeed(feed).getPostAuthor(postId),
-            "Only author can configure"
-        );
+            originalMsgSender == IFeed(feed).getPostAuthor(postId)
+        ); // Only author can configure
         
         _bountyNftAddress[feed][postId] = abi.decode(params[0].value, (address));
 
@@ -63,9 +64,9 @@ contract BountyPostAction is BasePostAction {
         address feed,
         uint256 postId,
         KeyValue[] calldata params
-    ) external override returns (bytes memory) {
-        require(_bountyNftAddress[feed][postId] != 0, "No NFT address configured");
-        require(_bountyWinnerAddress[feed][postId] == 0, "Bounty winner already assigned");
+    ) internal override returns (bytes memory) {
+        require(_bountyNftAddress[feed][postId] != address(0)); // No NFT address configured
+        require(_bountyWinnerAddress[feed][postId] == address(0)); // Bounty winner already assigned
 
         address bountyWinner = abi.decode(params[0].value, (address));
 

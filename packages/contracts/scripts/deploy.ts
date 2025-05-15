@@ -15,8 +15,8 @@ async function main() {
   console.log("AcceptedAnswerNFT deployed to:", nftAddress);
   console.log(" - Transaction hash:", answerNFT.deploymentTransaction()?.hash);
 
-  console.log("Deploying BountyCollectModule...");
-  const ModuleFactory = await ethers.getContractFactory("BountyCollectModule");
+  console.log("Deploying BountyPostAction...");
+  const ModuleFactory = await ethers.getContractFactory("BountyPostAction");
   // Constructor for BountyCollectModule no longer takes Hub address for V3
   const bountyModule = await ModuleFactory.deploy(nftAddress);
   await bountyModule.waitForDeployment();

@@ -13,7 +13,7 @@ const accounts = privateKey && privateKey.length === 66 && privateKey.startsWith
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.23",
+    version: "0.8.26",
     settings: {
       optimizer: {
         enabled: true,
