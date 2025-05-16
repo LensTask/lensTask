@@ -4,22 +4,25 @@ import {
   post,
   fetchAccount,
   fetchAccountsAvailable,
-  createAccountWithUsername,
+  createAccountWithUsername, 
   currentSession,
   fetchPostReferences
 } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
-import { evmAddress, postId, uri,PostReferenceType } from "@lens-protocol/client";
+import { blockchainData, evmAddress, postId, uri,PostReferenceType } from "@lens-protocol/client";
 import { never } from "@lens-protocol/client";
 import { storageClient } from "./storage-client";
 import { client } from "./client";
 import { useAccount, useSignMessage, useWalletClient } from 'wagmi';
 import { account as makeMetadata } from "@lens-protocol/metadata";
 import { textOnly } from "@lens-protocol/metadata";
+import { getNftAddress, getPostActionAddress } from './utils';
+import { AbiCoder, keccak256, toUtf8Bytes } from "ethers";
+
 import { idchain } from 'viem/chains';
 
 const useSessionClient = () => {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chainId } = useAccount();
   console.log('[useSessionClient] useAccount', { address, isConnected });
 
   const { signMessageAsync } = useSignMessage();
@@ -66,16 +69,16 @@ const useSessionClient = () => {
       }
 
       // SessionClient: { ... }
-      
+
       currentClient = resumed.value;
       const resumedSessionDetails = await currentSession(currentClient);
-      if(resumedSessionDetails.value.signer.toLowerCase() !== address.toLowerCase()){
+      if (resumedSessionDetails.value.signer.toLowerCase() !== address.toLowerCase()) {
         console.warn("Loging out from previous session")
         await currentClient.logout();
         currentClient = null;
       }
       console.warn("Making session")
-      if(!currentClient){
+      if (!currentClient) {
         const loginResult = await client.login({
           onboardingUser: { wallet: address as `0x${string}` },
           signMessage: async (message: string) => {
@@ -138,7 +141,7 @@ const useSessionClient = () => {
     }
   };
 
-  const handleProfileCreation = async (sessionClient,usernameSignUp) => {
+  const handleProfileCreation = async (sessionClient, usernameSignUp) => {
 
 
     log('Creating metadata for username:', usernameSignUp);
@@ -168,14 +171,14 @@ const useSessionClient = () => {
         setFeedback(`Profile creation sucessfull`);
         return accountData
       });
-      if (!result) {
-        error('Error creating profile:', result.error);
-        setFeedback(`Profile creation failed: ${result.error.message}`);
-      }
+    if (!result) {
+      error('Error creating profile:', result.error);
+      setFeedback(`Profile creation failed: ${result.error.message}`);
+    }
       return result;
   };
 
-  const handleLoginOrCreateWithLens = async (sessionClient,usernameSignUp) => {
+  const handleLoginOrCreateWithLens = async (sessionClient, usernameSignUp) => {
 
     setFeedback(null);
 
@@ -192,7 +195,7 @@ const useSessionClient = () => {
       if (usernameSignUp) {
         log('Detected signup username and existing session, creating profile.');
         
-        return await handleProfileCreation(sessionClient,usernameSignUp);
+        return await handleProfileCreation(sessionClient, usernameSignUp);
       }
 
       const loginResult = await client.login({
@@ -224,10 +227,64 @@ const useSessionClient = () => {
       log('Login/onboarding flow complete.');
     }
   };
-  const handlePost = async (content,sessionClient,activeLensProfile) => {
+
+
+  const handleAssignResponseWinner = async (
+    feedAddress: string,
+    postId: number,
+    winnerAddress: string
+  ) => {
+    setFeedback(null);
+    console.log("[useSessionClient] handleAssignBounty triggered.");
+    if (!sessionClient) return;
+    if (!isConnected || !activeLensProfile) {
+      const msg = "⚠️ Please log in with an active Lens Profile first.";
+      setFeedback(msg);
+      console.warn(`[useSessionClient] ${msg}`);
+      return;
+    }
+  
+    setFeedback("Preparing transaction…");
+    setIsPosting(true);
+  
+    // build the single raw param your solidity expects
+    const coder = new AbiCoder();
+    const key   = blockchainData(keccak256(toUtf8Bytes("winner")));
+    const data  = blockchainData(coder.encode(["address"], [winnerAddress]));
+    const params = [{ raw: { key, data } }];
+  
+    try {
+      // submit the execute(...) tx
+      const tx = await walletClient!.writeContract({
+        address: evmAddress(getPostActionAddress(chainId)),
+        abi: [
+          // minimal ABI for your execute fn
+          "function execute(address feed,uint256 postId,tuple(bytes32 key,bytes value)[] params) external returns (bytes)"
+        ],
+        functionName: "execute",
+        args: [feedAddress, postId, params],
+      });
+  
+      console.log("⏳ tx sent:", tx.hash);
+      setFeedback(`📤 Transaction sent: ${tx.hash.substring(0, 10)}…`);
+      await tx.wait();
+      console.log("✅ tx confirmed");
+      setFeedback("✅ Bounty winner assigned!");
+    } catch (err: any) {
+      console.error(err);
+      setFeedback(`❌ Error assigning bounty: ${err.message}`);
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+
+
+
+  const handlePost = async (content, sessionClient, activeLensProfile) => {
     setFeedback(null); // Clear previous feedback
     console.log('[SimplePostCreator] handlePost triggered.');
-    if(!sessionClient) return;
+    if (!sessionClient) return;
     if (!isConnected || !activeLensProfile) {
       const msg = '⚠️ Please log in with an active Lens Profile first.';
       setFeedback(msg);
@@ -250,9 +307,37 @@ const useSessionClient = () => {
     const metadata = textOnly({
       content: content,
     });
-    
+
+
+    // Get the shared coder
+    const coder = AbiCoder.defaultAbiCoder();
+
+    const postActionData = {
+      unknown: {
+        address: evmAddress(getPostActionAddress(chainId)),
+        params: [
+          {
+            raw: {
+              // 32-byte key: keccak("nftAddress")
+              key: blockchainData(
+                "0x4a0580de8961dc8091b1b1c2d0e1d5fd69c37e2bb2ba23ada6a8099be234de72"
+              ),
+              // ABI-encode the NFT address into a 32-byte word
+              data: blockchainData(
+                coder.encode(
+                  ["address"],
+                  [getNftAddress(chainId)]
+                )
+              ),
+            },
+          },
+        ],
+      },
+    };
+
+
     const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
-    const resultPost = await post(sessionClient, { contentUri: uri(uriResult) });
+    const resultPost = await post(sessionClient, { contentUri: uri(uriResult), actions: [postActionData] });
     console.log("ResultPost:");
     console.log(resultPost)
     const simulatedSuccess = resultPost?.value?.hash ? true : false; // Change to false to test error path
@@ -314,6 +399,8 @@ const useSessionClient = () => {
     handleProfileCreation,
     checkCurrentLensSession,
     handleCommentOnPost
+    handleAssignResponseWinner,
+
   };
 };
 
