@@ -54,9 +54,14 @@ export default function AcceptAnswerButton({
       <button
         disabled={isPending}
         onClick={async () => {
-          alert(questionId);
-          alert(feedAddress)
-          alert(winnerAddress)
+          // alert(questionId);
+          // alert(feedAddress)
+          // alert(winnerAddress)
+
+
+          console.log("questionId", questionId)
+          console.log("feedAddress", feedAddress)
+          console.log("winnerAddress", winnerAddress)
           setStatusMessage("DOing stuff")
           await handleAssignResponseWinner(
             state.stateSessionClient,

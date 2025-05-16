@@ -1,15 +1,16 @@
 import { useState } from 'react';
 
-import { 
+import {
   post,
   fetchAccount,
   fetchAccountsAvailable,
-  createAccountWithUsername, 
+  createAccountWithUsername,
   currentSession,
-  fetchPostReferences
+  fetchPostReferences,
+  executePostAction
 } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
-import { blockchainData, evmAddress, postId, uri,PostReferenceType } from "@lens-protocol/client";
+import { blockchainData, evmAddress, postId, uri, PostReferenceType } from "@lens-protocol/client";
 import { never } from "@lens-protocol/client";
 import { storageClient } from "./storage-client";
 import { client } from "./client";
@@ -23,7 +24,7 @@ import { idchain } from 'viem/chains';
 
 const useSessionClient = () => {
   const { address, isConnected, chainId } = useAccount();
-  console.log('[useSessionClient] useAccount', { address, isConnected });
+  // console.log('[useSessionClient] useAccount', { address, isConnected });
 
   const { signMessageAsync } = useSignMessage();
   const { data: walletClient } = useWalletClient();
@@ -42,7 +43,7 @@ const useSessionClient = () => {
   const error = (...args: any[]) => console.error('[useSessionClient]', ...args);
 
   const checkCurrentLensSession = async () => {
-    
+
     if (!address) {
       log('Wallet not connected, clearing session state.');
       setActiveLensProfile(null);
@@ -175,7 +176,7 @@ const useSessionClient = () => {
       error('Error creating profile:', result.error);
       setFeedback(`Profile creation failed: ${result.error.message}`);
     }
-      return result;
+    return result;
   };
 
   const handleLoginOrCreateWithLens = async (sessionClient, usernameSignUp) => {
@@ -194,7 +195,7 @@ const useSessionClient = () => {
     try {
       if (usernameSignUp) {
         log('Detected signup username and existing session, creating profile.');
-        
+
         return await handleProfileCreation(sessionClient, usernameSignUp);
       }
 
@@ -227,61 +228,100 @@ const useSessionClient = () => {
       log('Login/onboarding flow complete.');
     }
   };
-
-
   const handleAssignResponseWinner = async (
     sessionClient,
     activeLensProfile,
     feedAddress: string,
-    postId: number,
+    questionId: string,      // was `postId` before
     winnerAddress: string
   ) => {
     setFeedback(null);
-    console.log("[useSessionClient] handleAssignBounty triggered.");
+    console.log('[useSessionClient] handleAssignResponseWinner triggered.');
+
     if (!sessionClient) return;
     if (!isConnected || !activeLensProfile) {
-      const msg = "⚠️ Please log in with an active Lens Profile first.";
+      const msg = '⚠️ Please log in with an active Lens Profile first.';
       setFeedback(msg);
       console.warn(`[useSessionClient] ${msg}`);
       return;
     }
-  
-    setFeedback("Preparing transaction…");
+
+    setFeedback('Preparing transaction…');
     setIsPosting(true);
-  
-    // build the single raw param your solidity expects
-    const coder = new AbiCoder();
-    const key   = blockchainData(keccak256(toUtf8Bytes("winner")));
-    const data  = blockchainData(coder.encode(["address"], [winnerAddress]));
-    const params = [{ raw: { key, data } }];
-  
+    console.log('[useSessionClient] feedAddress:', feedAddress);
+    console.log('[useSessionClient] questionId:', questionId);
+    console.log('[useSessionClient] winnerAddress:', winnerAddress);
+
+    const metadata = textOnly({
+      content: "content",
+      tags: ["question", "lens-task-test"],
+    });
+
+    // — build the single key/value param your Solidity expects —
+    const coder = AbiCoder.defaultAbiCoder();
+    const keyHash = keccak256(toUtf8Bytes('winner'));            // keccak("winner")
+    // const key     = blockchainData(keyHash);
+    const data = blockchainData(coder.encode(['address'], [winnerAddress]));
+
     try {
-      // submit the execute(...) tx
-      const tx = await walletClient!.writeContract({
-        address: evmAddress(getPostActionAddress(chainId)),
-        abi: [
-          // minimal ABI for your execute fn
-          "function execute(address feed,uint256 postId,tuple(bytes32 key,bytes value)[] params) external returns (bytes)"
-        ],
-        functionName: "execute",
-        args: [feedAddress, postId, params],
-      });
-  
-      console.log("⏳ tx sent:", tx.hash);
-      setFeedback(`📤 Transaction sent: ${tx.hash.substring(0, 10)}…`);
-      await tx.wait();
-      console.log("✅ tx confirmed");
-      setFeedback("✅ Bounty winner assigned!");
+      // const result = await executePostAction(sessionClient, {
+      //   post: postId(questionId),      // now calls the helper, not your param
+      //   action: {
+      //     unknown: {
+      //       address: evmAddress(getPostActionAddress(chainId)),
+      //       params: [
+      //         {
+      //           raw: {
+      //             // 32 bytes key (e.g., keccak(name))
+      //             key: blockchainData(keccak256(toUtf8Bytes('winner')),
+      //             // an ABI encoded value
+      //             value: blockchainData(coder.encode(['address'], [winnerAddress])),
+      //           },
+      //         },
+      //       ],
+      //     },
+      //   },
+      // });
+
+
+      const postExecuteAction = {
+        post: postId(questionId.toString()),  
+        action: {
+          unknown: {
+            address: evmAddress(getPostActionAddress(chainId)),
+            params: [
+              {
+                // top-level key + data, no `raw` wrapper
+                key: blockchainData(keccak256(toUtf8Bytes("winner"))),
+                data: blockchainData(
+                  coder.encode(["address"], [winnerAddress])
+                ),
+              },
+            ],
+          },
+        },
+      };
+      
+      // (If you need to upload metadata first, do that before executing the action)
+      const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
+      
+      const result = await executePostAction(sessionClient, postExecuteAction);
+
+
+      if (result.isErr()) {
+        console.error(result.error);
+        setFeedback(`❌ Error assigning bounty: ${result.error.message}`);
+      } else {
+        console.log('✅ Bounty winner assigned:', result.value);
+        setFeedback('✅ Bounty winner assigned!');
+      }
     } catch (err: any) {
       console.error(err);
-      setFeedback(`❌ Error assigning bounty: ${err.message}`);
+      setFeedback(`❌ Unexpected error: ${err.message || err}`);
     } finally {
       setIsPosting(false);
     }
   };
-
-
-
 
   const handlePost = async (content, sessionClient, activeLensProfile) => {
     setFeedback(null); // Clear previous feedback
@@ -308,7 +348,7 @@ const useSessionClient = () => {
     console.log('[SimplePostCreator] Content for post:', content);
     const metadata = textOnly({
       content: content,
-      tags:["question","lens-task-test"],
+      tags: ["question", "lens-task-test"],
     });
 
 
@@ -359,14 +399,14 @@ const useSessionClient = () => {
 
     setIsPosting(false); // Reset local loading state
   };
-  const handleCommentOnPost = async (content,id,sessionClient) => {
-    
+  const handleCommentOnPost = async (content, id, sessionClient) => {
+
     const metadata = textOnly({
       content: content,
-      tags:["answer","lens-task-test"],
+      tags: ["answer", "lens-task-test"],
 
     });
-    
+
     const { uri: uriResponse } = await storageClient.uploadAsJson(metadata);
     const result = await post(sessionClient, {
       contentUri: uri(uriResponse),
@@ -376,17 +416,17 @@ const useSessionClient = () => {
     });
     return result;
   }
-  
-  const getCommentsOnPost = async (id,client) => {
+
+  const getCommentsOnPost = async (id, client) => {
     const result = await fetchPostReferences(client, {
       referencedPost: postId(id),
       referenceTypes: [PostReferenceType.CommentOn],
     });
-    
+
     if (result.isErr()) {
       return console.error(result.error);
     }
-    
+
     // items: Array<AnyPost>
     const { items, pageInfo } = result.value;
   }
