@@ -1,15 +1,22 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 
-import { post, fetchAccount, fetchAccountsAvailable, createAccountWithUsername,currentSession } from "@lens-protocol/client/actions";
+import { 
+  post,
+  fetchAccount,
+  fetchAccountsAvailable,
+  createAccountWithUsername,
+  currentSession,
+  fetchPostReferences
+} from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
-import { evmAddress, SessionClient } from "@lens-protocol/client";
-import { uri } from "@lens-protocol/client";
+import { evmAddress, postId, uri,PostReferenceType } from "@lens-protocol/client";
 import { never } from "@lens-protocol/client";
 import { storageClient } from "./storage-client";
 import { client } from "./client";
 import { useAccount, useSignMessage, useWalletClient } from 'wagmi';
 import { account as makeMetadata } from "@lens-protocol/metadata";
 import { textOnly } from "@lens-protocol/metadata";
+import { idchain } from 'viem/chains';
 
 const useSessionClient = () => {
   const { address, isConnected } = useAccount();
@@ -245,9 +252,10 @@ const useSessionClient = () => {
     
     const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
     const resultPost = await post(sessionClient, { contentUri: uri(uriResult) });
-    console.log(resultPost);
-    const simulatedSuccess = true; // Change to false to test error path
-    const simulatedTxOrPubId = simulatedSuccess ? `0xSIMULATED_TX_OR_PUB_ID_${Date.now()}` : null;
+    console.log("ResultPost:");
+    console.log(resultPost)
+    const simulatedSuccess = resultPost?.value?.hash ? true : false; // Change to false to test error path
+    const simulatedTxOrPubId = resultPost.value?.hash
 
     if (simulatedSuccess && simulatedTxOrPubId) {
       const finalMsg = `✅ Post submitted! (Simulated - ID/Tx: ${simulatedTxOrPubId.substring(0, 12)}...). Refresh feed to see.`;
@@ -262,8 +270,35 @@ const useSessionClient = () => {
 
     setIsPosting(false); // Reset local loading state
   };
-
+  const handleCommentOnPost = async (content,id,sessionClient) => {
+    
+    const metadata = textOnly({
+      content: content,
+    });
+    
+    const { uri: uriResponse } = await storageClient.uploadAsJson(metadata);
+    const result = await post(sessionClient, {
+      contentUri: uri(uriResponse),
+      commentOn: {
+        post: postId(id), // the post to comment on
+      },
+    });
+    return result;
+  }
   
+  const getCommentsOnPost = async (id,client) => {
+    const result = await fetchPostReferences(client, {
+      referencedPost: postId(id),
+      referenceTypes: [PostReferenceType.CommentOn],
+    });
+    
+    if (result.isErr()) {
+      return console.error(result.error);
+    }
+    
+    // items: Array<AnyPost>
+    const { items, pageInfo } = result.value;
+  }
 
   return {
     sessionClient,
@@ -277,6 +312,7 @@ const useSessionClient = () => {
     handleLoginOrCreateWithLens,
     handleProfileCreation,
     checkCurrentLensSession,
+    handleCommentOnPost
   };
 };
 

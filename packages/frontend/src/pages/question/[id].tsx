@@ -129,13 +129,14 @@ const QuestionDetail: NextPage = () => {
         // Ensure you are only fetching comments if using fetchPostReferences
           // publicationTypes: [PublicationType.Comment], // This filter might exist in `where` clause
       });
-
+      console.log(answersResult)
+      alert("check")
       if (answersResult.isErr()) {
         console.error("[QuestionDetail useEffect] Error fetching answers:", answersResult.error.message);
         setError({ message: answersResult.error.message, type: 'answers' });
       } else {
         // Filter for actual comments if fetchPostReferences returns mixed types (e.g. Mirrors of comments)
-        const commentsOnly = answersResult.value.items.filter(item => item.__typename === 'Comment');
+        const commentsOnly = answersResult.value.items;
         setAnswers(commentsOnly);
         setAnswersPageInfo(answersResult.value.pageInfo);
         console.log(`[QuestionDetail useEffect] Fetched ${commentsOnly.length} answers (comments).`);
@@ -238,16 +239,14 @@ const QuestionDetail: NextPage = () => {
         )}
 
         {answers.map((answer) => { // `answer` is of type `AnyPublication`, likely a `Comment`
-          const answerMeta = answer.metadata as V2PublicationMetadata | undefined;
-          if (answer.__typename !== 'Comment') return null; // Explicitly render only comments
-
+          const answerMeta = answer.metadata;
           return (
             <div key={answer.id} className="border dark:border-gray-700 p-4 rounded-lg bg-white dark:bg-gray-800 shadow-md">
               <div className="mb-2">
                 {renderV2Content(answerMeta)}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                Answer by: {answer.by.handle?.fullHandle || answer.by.address.substring(0,6)+"..."}
+                Answer by: {answer.author.username?.localName || answer.author?.address.substring(0,6)+"..."}
                 <span className="mx-1">·</span>
                 {new Date(answer.createdAt).toLocaleDateString()}
               </p>
@@ -257,7 +256,7 @@ const QuestionDetail: NextPage = () => {
                     <AcceptAnswerButton
                         questionId={question.id as PublicationId}
                         answerId={answer.id as PublicationId} // This is the comment's ID
-                        expertProfileId={answer.by.id as ProfileId} // Answerer's profile ID
+                        expertProfileId={answer.author.username.id as ProfileId} // Answerer's profile ID
                         // moduleActionId={bountyCollectModuleAddress as `0x${string}`} // Re-evaluate bounty module for V2
                     />
                   </div>

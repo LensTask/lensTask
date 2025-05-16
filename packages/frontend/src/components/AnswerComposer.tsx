@@ -4,6 +4,8 @@ import { useState } from "react";
 // Assuming PublicationId type can be a simple string for now if not using Lens SDK
 // If you are using a typed ID from your page component, import that type.
 // For example: import { PublicationId } from "@lens-protocol/client/actions";
+import { useAppContext } from '../context/useAppState';
+import useSessionClient from '../lib/useSessionClient';
 
 interface AnswerComposerProps {
   parentId: string; // ID of the publication (question) being commented on
@@ -16,14 +18,14 @@ export default function AnswerComposer({ parentId }: AnswerComposerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false); // Local submitting state
   const [uiError, setUiError] = useState<string | null>(null);
   const [uiSuccess, setUiSuccess] = useState<string | null>(null);
-
+  const { state,actions } = useAppContext();
+  const { handleCommentOnPost } = useSessionClient();
   // Placeholder for active profile - to be replaced with actual Lens session data
-  const activeProfile = null; // SIMULATED: No active profile initially
+  const activeProfile = state.stateActiveLensProfile; // SIMULATED: No active profile initially
 
   const submitAnswer = async () => {
     if (!activeProfile) {
       setUiError("You must be logged in with a Lens profile to post an answer.");
-      alert("Login functionality not yet implemented. Please sign in to post an answer."); // Placeholder alert
       return;
     }
     if (!text.trim()) {
@@ -37,16 +39,15 @@ export default function AnswerComposer({ parentId }: AnswerComposerProps) {
 
     console.log(`[AnswerComposer] Pretending to submit comment on ${parentId} with content: "${text.substring(0, 50)}..."`);
 
-    // --- SIMULATED SUBMISSION ---
-    // Replace this with your actual Lens SDK `createComment` call later
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+    const commentResult = await handleCommentOnPost(text,parentId,state.stateSessionClient);
+    console.log("Comment Result:");
+    console.log(commentResult)
 
-    // Simulate a successful submission for UI testing
-    const simulatedSuccess = true; // Change to false to test error path
-
+    const simulatedSuccess = commentResult?.value?.hash ? true : false; // Change to false to test error path
+    const simulatedTxOrPubId = commentResult?.value?.hash;
     if (simulatedSuccess) {
-      setUiSuccess("Answer submitted successfully! (Simulated)");
-      setText(""); // Clear input
+      setUiSuccess(`✅ Post submitted! (ID/Tx: ${simulatedTxOrPubId.substring(0, 12)}...). Refresh feed to see.`)
+      setText("");       // Clear input
       console.log("[AnswerComposer] Simulated submission successful.");
       // Optionally: Trigger a refetch of comments for the parent publication on the parent page
     } else {
@@ -86,7 +87,7 @@ export default function AnswerComposer({ parentId }: AnswerComposerProps) {
         onChange={(e) => setText(e.target.value)}
         className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-kintask-blue focus:border-kintask-blue transition-colors placeholder-gray-400 dark:placeholder-gray-500 disabled:opacity-50"
         rows={5}
-        placeholder={`Replying as @${activeProfile.handle?.fullHandle || activeProfile.id.substring(0,6)+'...'} Type your insightful answer here.`}
+        placeholder={`Replying as @${activeProfile.username?.localName} Type your insightful answer here.`}
         disabled={isSubmitting}
         aria-label="Your answer content"
       />
