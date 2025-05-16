@@ -39,7 +39,8 @@ const useSessionClient = () => {
   const error = (...args: any[]) => console.error('[useSessionClient]', ...args);
 
   const checkCurrentLensSession = async () => {
-    if (!isConnected || !address) {
+    
+    if (!address) {
       log('Wallet not connected, clearing session state.');
       setActiveLensProfile(null);
       setFeedback(null);
