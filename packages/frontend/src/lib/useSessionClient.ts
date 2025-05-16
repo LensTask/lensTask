@@ -164,6 +164,7 @@ const useSessionClient = () => {
         error('Error creating profile:', result.error);
         setFeedback(`Profile creation failed: ${result.error.message}`);
       }
+      return result;
   };
 
   const handleLoginOrCreateWithLens = async (sessionClient,usernameSignUp) => {
@@ -182,8 +183,8 @@ const useSessionClient = () => {
     try {
       if (usernameSignUp) {
         log('Detected signup username and existing session, creating profile.');
-        await handleProfileCreation(sessionClient,usernameSignUp);
-        return;
+        
+        return await handleProfileCreation(sessionClient,usernameSignUp);
       }
 
       const loginResult = await client.login({

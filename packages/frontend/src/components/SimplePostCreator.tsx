@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { useAccount } from 'wagmi';
 
 // --- IMPORT YOUR AUTH CONTEXT HOOK ---
-import { useAuth } from '../context/appState'; // Adjust path if needed
+import { useAppContext } from '../context/useAppState';
 
 // Your custom hook for actions is still very useful
 import useSessionClient from "../lib/useSessionClient";
@@ -24,10 +24,8 @@ export default function SimplePostCreator() {
 
   // --- GET AUTH STATE FROM CONTEXT ---
   const {
-    stateSessionClient,
-    stateActiveLensProfile, // This now comes from your global context
-    isLoadingSession        // To know if the session (and profile) is still being loaded
-  } = useAuth();
+    state     // To know if the session (and profile) is still being loaded
+  } = useAppContext();
 
   // --- KEEP useSessionClient FOR ACTIONS AND LOCAL UI STATE FOR ACTIONS ---
   const {
@@ -44,7 +42,7 @@ export default function SimplePostCreator() {
   // Your original structure for activeLensProfile was:
   // activeLensProfile: { username?: { localName: string }, address?: string }
   // Adjust placeholder to match this.
-  const placeholderHandle = stateActiveLensProfile?.username?.localName || stateActiveLensProfile?.address?.substring(0, 6) || "Lens User";
+  const placeholderHandle = state.stateActiveLensProfile?.username?.localName || state.stateActiveLensProfile?.address?.substring(0, 6) || "Lens User";
   const placeholderText = `What's on your mind, @${placeholderHandle}?`;
 
   // --- UI Rendering ---
@@ -53,7 +51,7 @@ export default function SimplePostCreator() {
       <h2 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">Create a New Lens Post</h2>
 
       {/* Show loading state if session is still being checked by AuthContext */}
-      {isLoadingSession && !isConnecting && (
+      {state.isLoadingSession && !isConnecting && (
         <div className="p-3 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-center animate-pulse">
             <p className="text-sm text-slate-600 dark:text-slate-300">
                 Checking Lens session...
@@ -62,7 +60,7 @@ export default function SimplePostCreator() {
       )}
 
       {/* Show connect message if wallet not connected, or if session is loaded but no profile */}
-      {(!isConnected || (!isLoadingSession && !stateActiveLensProfile)) && !isConnecting && (
+      {(!isConnected || (!state.isLoadingSession && !state.stateActiveLensProfile)) && !isConnecting && (
         <div className="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 rounded-md text-center">
             <p className="text-sm text-amber-700 dark:text-amber-200">
             Please connect your wallet and ensure you have an active Lens profile to create a post.
@@ -79,7 +77,7 @@ export default function SimplePostCreator() {
       )}
 
       {/* Show post creation form if connected AND session loaded AND there's an active profile */}
-      {isConnected && !isLoadingSession && stateActiveLensProfile && (
+      {isConnected && !state.isLoadingSession && state.stateActiveLensProfile && (
         <>
           <textarea
             className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-kintask-blue focus:border-kintask-blue transition-colors placeholder-gray-400 dark:placeholder-gray-500 disabled:opacity-50"
@@ -103,10 +101,10 @@ export default function SimplePostCreator() {
 
           <button
             onClick={async () => {
-              if (stateActiveLensProfile) { // Ensure profile is still there before posting
+              if (state.stateActiveLensProfile) { // Ensure profile is still there before posting
                 // The handlePost function from useSessionClient likely uses the
                 // active profile and sessionClient it has internally.
-                await handlePost(content,stateSessionClient,stateActiveLensProfile); // Call the action from useSessionClient
+                await handlePost(content,state.stateSessionClient,state.stateActiveLensProfile); // Call the action from useSessionClient
                 setContent(''); // Clear input on presumed success (handlePost should manage feedback)
               } else {
                 // This case should ideally be prevented by the UI rendering conditions
@@ -114,7 +112,7 @@ export default function SimplePostCreator() {
               }
             }}
             // Disable if posting action is in progress, no content, or (redundantly) not connected/no profile
-            disabled={isPosting || !content.trim() || !isConnected || !stateActiveLensProfile}
+            disabled={isPosting || !content.trim() || !isConnected || !state.stateActiveLensProfile}
             className="mt-4 px-6 py-2 bg-kintask-blue hover:bg-kintask-blue-dark text-white font-medium rounded-md disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-kintask-blue focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-opacity"
           >
             {isPosting ? ( // isPosting from useSessionClient (action-specific loading)

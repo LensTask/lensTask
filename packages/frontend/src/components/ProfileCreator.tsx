@@ -6,7 +6,7 @@ import { useAccount } from 'wagmi';
 import { ConnectKitButton } from 'connectkit';
 
 // *** IMPORT YOUR AUTH CONTEXT HOOK ***
-import { useAuth } from '../context/appState';
+import { useAppContext } from '../context/useAppState';
 
 // Your custom hook for actions
 import useSessionClient from "../lib/useSessionClient";
@@ -18,14 +18,11 @@ export default function ProfileCreator() {
   console.log('[ProfileCreator] useAccount:', { address, isConnected, isConnecting });
 
   // *** GET AUTH STATE FROM CONTEXT ***
-  const {
-    stateActiveLensProfile,
-    stateSessionClient,
-    isLoadingSession
-  } = useAuth();
+  const { state,actions } = useAppContext();
+
 
   // LOG: Auth context values
-  console.log('[ProfileCreator] useAuth context:', { stateActiveLensProfile, stateSessionClient, isLoadingSession });
+  console.log('[ProfileCreator] useAuth context:', state);
   const [usernameSignUp, setUsernameSignUp] = useState<string>("");
 
   // *** KEEP useSessionClient FOR ACTIONS AND LOCAL UI STATE ***
@@ -41,23 +38,19 @@ export default function ProfileCreator() {
   const [showSignUpForm, setSignUpFormActive] = useState(false);
 
   useEffect(() => {
-    console.log('[ProfileCreator] useEffect: Checking showSignUpForm logic', {
-      stateActiveLensProfile,
-      isConnected,
-      isLoadingSession
-    });
-    if (!stateActiveLensProfile && isConnected && !isLoadingSession) {
+    console.log('[ProfileCreator] useEffect: Checking showSignUpForm logic')
+    if (!state.stateActiveLensProfile && isConnected && !state.isLoadingSession) {
       setSignUpFormActive(true);
       console.log('[ProfileCreator] setSignUpFormActive(true)');
-    } else if (stateActiveLensProfile) {
+    } else if (state.stateActiveLensProfile) {
       setSignUpFormActive(false);
       console.log('[ProfileCreator] setSignUpFormActive(false)');
     }
-  }, [stateActiveLensProfile, isConnected, isLoadingSession]);
+  }, [state.stateActiveLensProfile, isConnected, state.isLoadingSession]);
 
   // LOG: Rendering loading state
-  if (isConnecting || isLoadingSession) {
-    console.log('[ProfileCreator] Loading UI - isConnecting or isLoadingSession:', { isConnecting, isLoadingSession });
+  if (isConnecting || state.isLoadingSession) {
+    console.log('[ProfileCreator] Loading UI - isConnecting or isLoadingSession');
     return (
       <div className="my-4 p-4 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-center animate-pulse">
         <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -81,9 +74,9 @@ export default function ProfileCreator() {
   }
 
   // LOG: Active Lens Profile detected
-  if (stateActiveLensProfile) {
-    const displayHandle = stateActiveLensProfile.username?.localName;
-    console.log('[ProfileCreator] Active Lens profile detected:', stateActiveLensProfile);
+  if (state.stateActiveLensProfile) {
+    const displayHandle = state.stateActiveLensProfile.username?.localName;
+    console.log('[ProfileCreator] Active Lens profile detected:', state.stateActiveLensProfile);
 
     return (
       <div className="my-4 p-4 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-600 rounded-lg text-center">
@@ -144,9 +137,10 @@ export default function ProfileCreator() {
         )}
         <div>
           <button
-            onClick={(e) => {
+            onClick={async (e) => {
               console.log('[ProfileCreator] Login/Create button clicked');
-              handleLoginOrCreateWithLens(stateSessionClient,usernameSignUp);
+              const profile = await handleLoginOrCreateWithLens(state.stateSessionClient,usernameSignUp);
+              actions.setStateActiveLensProfile(profile);
             }}
             type="button"
             disabled={isLoadingAction || !isConnected}
@@ -161,7 +155,7 @@ export default function ProfileCreator() {
                 Processing with Lens...
               </>
             ) :
-              !stateActiveLensProfile ?
+              !state.stateActiveLensProfile ?
                 "Create Profile" :
                 'Login Profile'
             }
