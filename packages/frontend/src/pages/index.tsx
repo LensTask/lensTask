@@ -45,7 +45,7 @@ const Home: NextPage = () => {
         // The second argument to fetchPosts is its options/filter object.
         // For LensTask, you need to define how to filter for questions.
         // Example: Filtering by a specific metadata tag.
-<<<<<<< Updated upstream
+
         const result = await fetchPosts(client, {
           filter: {
             metadata: {
@@ -54,24 +54,7 @@ const Home: NextPage = () => {
               tags: { all: ["lens-task-test", "question"] },
             },
           },
-=======
-        const result = await fetchPosts(client as any, { // Cast client to 'any' if its type is complex/unknown here
-          // --- ACTION REQUIRED: Define your Lens post filter for LensTask questions ---
-          // This generic fetch will get latest posts. You need to filter specifically.
-          // Example: if LensTask questions have a specific tag
-          filter: {
-            metadata: {
-              tags: {
-               all: ["lens-task-test","question"] // Or use 'all'
-              }
-           },
-          }
-          // limit: 10, // Example limit
-          // orderBy: { // Example sort order
-          //   sort: 'LATEST', // Check Lens docs for available sort options
-          // }
-          // --- End Filter Definition ---
->>>>>>> Stashed changes
+
         });
 
         if (result.isErr()) {
