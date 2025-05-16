@@ -305,7 +305,8 @@ const useSessionClient = () => {
       // (If you need to upload metadata first, do that before executing the action)
       const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
       
-      const result = await executePostAction(sessionClient, postExecuteAction);
+      const result = await executePostAction(sessionClient, postExecuteAction)
+      .andThen(handleOperationWith(walletClient));
 
 
       if (result.isErr()) {
