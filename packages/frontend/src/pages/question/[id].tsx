@@ -130,7 +130,7 @@ const QuestionDetail: NextPage = () => {
           // publicationTypes: [PublicationType.Comment], // This filter might exist in `where` clause
       });
       console.log(answersResult)
-      alert("check")
+      // alert("check")
       if (answersResult.isErr()) {
         console.error("[QuestionDetail useEffect] Error fetching answers:", answersResult.error.message);
         setError({ message: answersResult.error.message, type: 'answers' });

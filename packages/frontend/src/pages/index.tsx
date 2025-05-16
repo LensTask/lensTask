@@ -50,7 +50,7 @@ const Home: NextPage = () => {
             metadata: {
               // contentWarning: { oneOf: [ContentWarning.Sensitive] },
               // mainContentFocus: [MainContentFocus.Image],
-              tags: { all: ["lens-task-test"] },
+              tags: { all: ["lens-task-test", "question"] },
             },
           },
         });
