@@ -11,8 +11,7 @@ import { useAccount, useSignMessage, useWalletClient } from 'wagmi';
 import { account as makeMetadata } from "@lens-protocol/metadata";
 import { textOnly } from "@lens-protocol/metadata";
 import { getNftAddress, getPostActionAddress } from './utils';
-import { AbiCoder, toUtf8Bytes } from "ethers";
-import { keccak256 } from 'viem/_types/utils/hash/keccak256';
+import { AbiCoder, keccak256, toUtf8Bytes } from "ethers";
 
 
 const useSessionClient = () => {
