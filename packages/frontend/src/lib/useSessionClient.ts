@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 
-import { post, fetchAccount, fetchAccountsAvailable, createAccountWithUsername,currentSession } from "@lens-protocol/client/actions";
+import { post, fetchAccount, fetchAccountsAvailable, createAccountWithUsername, currentSession } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { blockchainData, evmAddress, SessionClient } from "@lens-protocol/client";
 import { uri } from "@lens-protocol/client";
@@ -11,7 +11,8 @@ import { useAccount, useSignMessage, useWalletClient } from 'wagmi';
 import { account as makeMetadata } from "@lens-protocol/metadata";
 import { textOnly } from "@lens-protocol/metadata";
 import { getNftAddress, getPostActionAddress } from './utils';
-import { AbiCoder } from "ethers";
+import { AbiCoder, toUtf8Bytes } from "ethers";
+import { keccak256 } from 'viem/_types/utils/hash/keccak256';
 
 
 const useSessionClient = () => {
@@ -61,16 +62,16 @@ const useSessionClient = () => {
       }
 
       // SessionClient: { ... }
-      
+
       currentClient = resumed.value;
       const resumedSessionDetails = await currentSession(currentClient);
-      if(resumedSessionDetails.value.signer.toLowerCase() !== address.toLowerCase()){
+      if (resumedSessionDetails.value.signer.toLowerCase() !== address.toLowerCase()) {
         console.warn("Loging out from previous session")
         await currentClient.logout();
         currentClient = null;
       }
       console.warn("Making session")
-      if(!currentClient){
+      if (!currentClient) {
         const loginResult = await client.login({
           onboardingUser: { wallet: address as `0x${string}` },
           signMessage: async (message: string) => {
@@ -133,7 +134,7 @@ const useSessionClient = () => {
     }
   };
 
-  const handleProfileCreation = async (sessionClient,usernameSignUp) => {
+  const handleProfileCreation = async (sessionClient, usernameSignUp) => {
 
 
     log('Creating metadata for username:', usernameSignUp);
@@ -163,13 +164,13 @@ const useSessionClient = () => {
         setFeedback(`Profile creation sucessfull`);
         return accountData
       });
-      if (!result) {
-        error('Error creating profile:', result.error);
-        setFeedback(`Profile creation failed: ${result.error.message}`);
-      }
+    if (!result) {
+      error('Error creating profile:', result.error);
+      setFeedback(`Profile creation failed: ${result.error.message}`);
+    }
   };
 
-  const handleLoginOrCreateWithLens = async (sessionClient,usernameSignUp) => {
+  const handleLoginOrCreateWithLens = async (sessionClient, usernameSignUp) => {
 
     setFeedback(null);
 
@@ -185,7 +186,7 @@ const useSessionClient = () => {
     try {
       if (usernameSignUp) {
         log('Detected signup username and existing session, creating profile.');
-        await handleProfileCreation(sessionClient,usernameSignUp);
+        await handleProfileCreation(sessionClient, usernameSignUp);
         return;
       }
 
@@ -218,10 +219,64 @@ const useSessionClient = () => {
       log('Login/onboarding flow complete.');
     }
   };
-  const handlePost = async (content,sessionClient,activeLensProfile) => {
+
+
+  const handleAssignResponseWinner = async (
+    feedAddress: string,
+    postId: number,
+    winnerAddress: string
+  ) => {
+    setFeedback(null);
+    console.log("[useSessionClient] handleAssignBounty triggered.");
+    if (!sessionClient) return;
+    if (!isConnected || !activeLensProfile) {
+      const msg = "⚠️ Please log in with an active Lens Profile first.";
+      setFeedback(msg);
+      console.warn(`[useSessionClient] ${msg}`);
+      return;
+    }
+  
+    setFeedback("Preparing transaction…");
+    setIsPosting(true);
+  
+    // build the single raw param your solidity expects
+    const coder = new AbiCoder();
+    const key   = blockchainData(keccak256(toUtf8Bytes("winner")));
+    const data  = blockchainData(coder.encode(["address"], [winnerAddress]));
+    const params = [{ raw: { key, data } }];
+  
+    try {
+      // submit the execute(...) tx
+      const tx = await walletClient!.writeContract({
+        address: evmAddress(getPostActionAddress(chainId)),
+        abi: [
+          // minimal ABI for your execute fn
+          "function execute(address feed,uint256 postId,tuple(bytes32 key,bytes value)[] params) external returns (bytes)"
+        ],
+        functionName: "execute",
+        args: [feedAddress, postId, params],
+      });
+  
+      console.log("⏳ tx sent:", tx.hash);
+      setFeedback(`📤 Transaction sent: ${tx.hash.substring(0, 10)}…`);
+      await tx.wait();
+      console.log("✅ tx confirmed");
+      setFeedback("✅ Bounty winner assigned!");
+    } catch (err: any) {
+      console.error(err);
+      setFeedback(`❌ Error assigning bounty: ${err.message}`);
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+
+
+
+  const handlePost = async (content, sessionClient, activeLensProfile) => {
     setFeedback(null); // Clear previous feedback
     console.log('[SimplePostCreator] handlePost triggered.');
-    if(!sessionClient) return;
+    if (!sessionClient) return;
     if (!isConnected || !activeLensProfile) {
       const msg = '⚠️ Please log in with an active Lens Profile first.';
       setFeedback(msg);
@@ -244,11 +299,11 @@ const useSessionClient = () => {
     const metadata = textOnly({
       content: content,
     });
-    
+
 
     // Get the shared coder
     const coder = AbiCoder.defaultAbiCoder();
-    
+
     const postActionData = {
       unknown: {
         address: evmAddress(getPostActionAddress(chainId)),
@@ -271,7 +326,7 @@ const useSessionClient = () => {
         ],
       },
     };
-    
+
 
     const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
     const resultPost = await post(sessionClient, { contentUri: uri(uriResult), actions: [postActionData] });
@@ -293,7 +348,7 @@ const useSessionClient = () => {
     setIsPosting(false); // Reset local loading state
   };
 
-  
+
 
   return {
     sessionClient,
@@ -307,6 +362,8 @@ const useSessionClient = () => {
     handleLoginOrCreateWithLens,
     handleProfileCreation,
     checkCurrentLensSession,
+    handleAssignResponseWinner,
+
   };
 };
 
