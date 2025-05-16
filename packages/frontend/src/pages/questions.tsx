@@ -27,7 +27,7 @@ interface FetchError {
   message: string;
 }
 
-const Home: NextPage = () => {
+const MyQuestions: NextPage = () => {
   // --- State variables managed by React ---
   const [publications, setPublications] = useState<GenericPublication[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true); // Start in loading state
@@ -164,4 +164,4 @@ const Home: NextPage = () => {
   );
 };
 
-export default Home;
+export default MyQuestions;

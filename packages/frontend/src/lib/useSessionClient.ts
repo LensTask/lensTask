@@ -230,6 +230,8 @@ const useSessionClient = () => {
 
 
   const handleAssignResponseWinner = async (
+    sessionClient,
+    activeLensProfile,
     feedAddress: string,
     postId: number,
     winnerAddress: string
@@ -361,6 +363,8 @@ const useSessionClient = () => {
     
     const metadata = textOnly({
       content: content,
+      tags:["answer","lens-task-test"],
+
     });
     
     const { uri: uriResponse } = await storageClient.uploadAsJson(metadata);

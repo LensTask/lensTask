@@ -20,8 +20,8 @@ import {
 } from "@lens-protocol/client/actions";
 import { client } from "../../lib/client"; // Adjust path
 import { postId,PostReferenceType } from "@lens-protocol/client"; // Helper to create typed PublicationId for posts
-// --- END LENS CLIENT SDK V2 IMPORTS ---
 
+import useSessionClient from "../../lib/useSessionClient";
 import AnswerComposer from "@/components/AnswerComposer";
 import AcceptAnswerButton from "@/components/AcceptAnswerButton";
 import QuestionDetailSkeleton from "@/components/QuestionDetailSkeleton";
@@ -60,7 +60,7 @@ const renderV2Content = (metadata: V2PublicationMetadata | null | undefined): JS
 const QuestionDetail: NextPage = () => {
   const router = useRouter();
   const { id: publicationIdFromQuery } = router.query;
-
+  const { handleAssignResponseWinner } = useSessionClient();
   // --- State Management ---
   const [question, setQuestion] = useState<Post | null>(null); // Expecting a Post for the question
   const [answers, setAnswers] = useState<AnyPublication[]>([]); // Comments will be AnyPublication or Comment
@@ -130,7 +130,6 @@ const QuestionDetail: NextPage = () => {
           // publicationTypes: [PublicationType.Comment], // This filter might exist in `where` clause
       });
       console.log(answersResult)
-      // alert("check")
       if (answersResult.isErr()) {
         console.error("[QuestionDetail useEffect] Error fetching answers:", answersResult.error.message);
         setError({ message: answersResult.error.message, type: 'answers' });
@@ -254,9 +253,10 @@ const QuestionDetail: NextPage = () => {
               {question && (
                   <div className="mt-3 pt-3 border-t dark:border-gray-600">
                     <AcceptAnswerButton
+
                         questionId={question.id as PublicationId}
-                        answerId={answer.id as PublicationId} // This is the comment's ID
-                        expertProfileId={answer.author.username.id as ProfileId} // Answerer's profile ID
+                        feedAddress={answer.feed.address} // This is the comment's ID
+                        winnerAddress={answer.author.address} // Answerer's profile ID
                         // moduleActionId={bountyCollectModuleAddress as `0x${string}`} // Re-evaluate bounty module for V2
                     />
                   </div>

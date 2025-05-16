@@ -5,7 +5,6 @@ import { useState } from "react";
 // If you are using a typed ID from your page component, import that type.
 // For example: import { PublicationId } from "@lens-protocol/client/actions";
 import { useAppContext } from '../context/useAppState';
-import useSessionClient from '../lib/useSessionClient';
 
 interface AnswerComposerProps {
   parentId: string; // ID of the publication (question) being commented on
@@ -19,7 +18,7 @@ export default function AnswerComposer({ parentId }: AnswerComposerProps) {
   const [uiError, setUiError] = useState<string | null>(null);
   const [uiSuccess, setUiSuccess] = useState<string | null>(null);
   const { state,actions } = useAppContext();
-  const { handleCommentOnPost } = useSessionClient();
+
   // Placeholder for active profile - to be replaced with actual Lens session data
   const activeProfile = state.stateActiveLensProfile; // SIMULATED: No active profile initially
 
