@@ -28,7 +28,7 @@ export const getPostActionAddress = function(chainId?: number) {
 // AcceptedAnswerNFT contract address for chain ID
 const NFT_ADDRESS: Record<number, string> = {
     232: "0x3f9bE9Ab356070B43ea861A35673257873eC7Cab", // mainnet
-    37111: "0x20a7b4453247B90Afc00742CA417aB0E9b77a92A" // testnet
+    37111: "0x4562F8f584471F8dB126bCFC13611ee9de6709E2" // testnet
 };
 
 export const getNftAddress = function(chainId?: number) {
