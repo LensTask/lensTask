@@ -13,6 +13,12 @@ import { AcceptedAnswerNFT } from "./AcceptedAnswerNFT.sol";
  *         commenter on the post.
  */
 contract BountyPostAction is BasePostAction {
+    // Emitted when a bounty NFT address is configured for a post
+    event Configured(bytes32 indexed key, bytes value);
+
+    // Emitted when a bounty winner is assigned and NFT is minted
+    event WinnerAssigned(address indexed feed, uint256 indexed postId, address indexed winner);
+
     // feed => postId => nftAddress
     mapping(address => mapping(uint256 => address)) private _bountyNftAddress;
 
@@ -40,9 +46,12 @@ contract BountyPostAction is BasePostAction {
             originalMsgSender == IFeed(feed).getPostAuthor(postId),
             "Only author can configure"
         );
-        
-        _bountyNftAddress[feed][postId] = abi.decode(params[0].value, (address));
 
+        // Decode and store NFT contract address
+        address nftAddress = abi.decode(params[0].value, (address));
+        _bountyNftAddress[feed][postId] = nftAddress;
+
+        emit Configured(params[0].key, params[0].value);
         return "";
     }
 
@@ -52,7 +61,7 @@ contract BountyPostAction is BasePostAction {
      * @param feed The address of the feed contract where the post exists.
      * @param postId The ID of the post being executed on.
      * @param params Array of key-value pairs. Expected to contain at least one element,
-     *        where the `value` of the first element is the ABI-encoded boolean vote.
+     *        where the `value` of the first element is the ABI-encoded address of the winner.
      * @return bytes Empty bytes.
      * Requirements:
      * - The `originalMsgSender` must be the author of this `postId`.
@@ -70,15 +79,23 @@ contract BountyPostAction is BasePostAction {
             originalMsgSender == IFeed(feed).getPostAuthor(postId),
             "Only author can assign bounty winner"
         );
-        require(_bountyNftAddress[feed][postId] != address(0), "No NFT address configured");
-        require(_bountyWinnerAddress[feed][postId] == address(0), "Bounty winner already assigned");
+        require(
+            _bountyNftAddress[feed][postId] != address(0),
+            "No NFT address configured"
+        );
+        require(
+            _bountyWinnerAddress[feed][postId] == address(0),
+            "Bounty winner already assigned"
+        );
 
         address bountyWinner = abi.decode(params[0].value, (address));
-
         _bountyWinnerAddress[feed][postId] = bountyWinner;
 
+        // Mint the NFT to the winner
         AcceptedAnswerNFT(_bountyNftAddress[feed][postId]).mint(bountyWinner);
 
+        // Emit event for assignment
+        emit WinnerAssigned(feed, postId, bountyWinner);
         return "";
     }
 
