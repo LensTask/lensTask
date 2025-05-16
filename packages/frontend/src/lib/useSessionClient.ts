@@ -398,7 +398,7 @@ const useSessionClient = () => {
     handleLoginOrCreateWithLens,
     handleProfileCreation,
     checkCurrentLensSession,
-    handleCommentOnPost
+    handleCommentOnPost,
     handleAssignResponseWinner,
 
   };
