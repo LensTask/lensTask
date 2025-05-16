@@ -11,6 +11,8 @@ import { useAccount, useSignMessage, useWalletClient } from 'wagmi';
 import { account as makeMetadata } from "@lens-protocol/metadata";
 import { textOnly } from "@lens-protocol/metadata";
 import { getNftAddress, getPostActionAddress } from './utils';
+import { AbiCoder } from "ethers";
+
 
 const useSessionClient = () => {
   const { address, isConnected, chainId } = useAccount();
@@ -243,21 +245,33 @@ const useSessionClient = () => {
       content: content,
     });
     
+
+    // Get the shared coder
+    const coder = AbiCoder.defaultAbiCoder();
+    
     const postActionData = {
       unknown: {
         address: evmAddress(getPostActionAddress(chainId)),
         params: [
           {
             raw: {
-              // 32 bytes key: keccak("nftAddress")
-              key: blockchainData("0x4a0580de8961dc8091b1b1c2d0e1d5fd69c37e2bb2ba23ada6a8099be234de72"),
-              // an ABI encoded value
-              data: blockchainData(getNftAddress(chainId)),
+              // 32-byte key: keccak("nftAddress")
+              key: blockchainData(
+                "0x4a0580de8961dc8091b1b1c2d0e1d5fd69c37e2bb2ba23ada6a8099be234de72"
+              ),
+              // ABI-encode the NFT address into a 32-byte word
+              data: blockchainData(
+                coder.encode(
+                  ["address"],
+                  [getNftAddress(chainId)]
+                )
+              ),
             },
           },
         ],
       },
     };
+    
 
     const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
     const resultPost = await post(sessionClient, { contentUri: uri(uriResult), actions: [postActionData] });

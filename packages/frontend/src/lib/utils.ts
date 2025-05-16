@@ -11,7 +11,7 @@ export const normalizeImageUrl = (uri?: string): string | undefined => {
 // BountyPostAction contract address for chain ID
 const POST_ACTION_ADDRESS: Record<number, string> = {
     232: "0xE5f5343E9afa04Ad62b006e109170113C1503649", // mainnet
-    37111: "0xFa5E20A92f412929AFF2Bcd858501F950b63886C" // testnet
+    37111: "0x87A4731c3542B78469d6DF263ABd09c9B8071008" // testnet
 };
 
 export const getPostActionAddress = function(chainId?: number) {
