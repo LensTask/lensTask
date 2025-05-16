@@ -306,6 +306,7 @@ const useSessionClient = () => {
     console.log('[SimplePostCreator] Content for post:', content);
     const metadata = textOnly({
       content: content,
+      tags:["question","lens-task-test"],
     });
 
 
