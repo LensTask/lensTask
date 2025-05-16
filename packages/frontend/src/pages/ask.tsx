@@ -23,12 +23,7 @@ export default function AskPage() {
 
   // --- KEEP useSessionClient FOR ACTIONS AND LOCAL UI STATE FOR ACTIONS ---
   const {
-    // sessionClient, // Not directly used in this component's render logic
-    feedback,      // Feedback specific to the posting action
-    isPosting,     // Loading state specific to the posting action
     handlePost,    // The function that performs the post
-    // isCheckingLensSession, // Replaced by isLoadingSession from context
-    // isLoading, // This was likely for the overall session; isPosting is for the action
   } = useSessionClient();
   // Simple character limit for demonstration
   const MAX_BODY_LENGTH = 1000;
