@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { lensClient } from "@/lib/lensClient"; // Assuming this is correctly set up
 import { InformationCircleIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'; // For feedback
+// --- IMPORT YOUR AUTH CONTEXT HOOK ---
+import { useAppContext } from '../context/useAppState';
+
+// Your custom hook for actions is still very useful
+import useSessionClient from "../lib/useSessionClient";
 
 export default function AskPage() {
   const [title, setTitle] = useState("");
@@ -11,7 +16,20 @@ export default function AskPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // --- GET AUTH STATE FROM CONTEXT ---
+  const {
+    state     // To know if the session (and profile) is still being loaded
+  } = useAppContext();
 
+  // --- KEEP useSessionClient FOR ACTIONS AND LOCAL UI STATE FOR ACTIONS ---
+  const {
+    // sessionClient, // Not directly used in this component's render logic
+    feedback,      // Feedback specific to the posting action
+    isPosting,     // Loading state specific to the posting action
+    handlePost,    // The function that performs the post
+    // isCheckingLensSession, // Replaced by isLoadingSession from context
+    // isLoading, // This was likely for the overall session; isPosting is for the action
+  } = useSessionClient();
   // Simple character limit for demonstration
   const MAX_BODY_LENGTH = 1000;
 
@@ -19,7 +37,6 @@ export default function AskPage() {
     e.preventDefault(); // Prevent default form submission
     setError(null);
     setSuccess(null);
-
     if (!title.trim() || !body.trim()) {
       setError("Please provide both a title and a question body.");
       return;
@@ -52,15 +69,7 @@ export default function AskPage() {
 
       console.log("Submitting with metadata:", metadata);
 
-      // IMPORTANT: Replace with actual lensClient.publication.postOnchain call
-      // For now, simulating an API call
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-      // const result = await lensClient.publication.postOnchain({
-      //   contentURI: `data:application/json,${JSON.stringify(metadata)}`,
-      //   // ... other necessary parameters for postOnchain (e.g., profileId if needed)
-      //   // ... openActionModules for bounty if you implement that
-      // });
-      // console.log("Publication result:", result);
+      await handlePost(body,state.stateSessionClient,state.stateActiveLensProfile); // Call the action from useSessionClient
 
       setSuccess("Your question has been submitted successfully!");
       setTitle("");
