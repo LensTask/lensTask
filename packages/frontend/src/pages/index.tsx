@@ -102,11 +102,11 @@ const Home: NextPage = () => {
             </p>
           </div>
           {/* ACTION: Update this link to your page for asking LensTask questions */}
-          <Link href="/ask-LensTask" legacyBehavior>
+          {/* <Link href="/ask-LensTask" legacyBehavior>
             <a className="ml-4 flex-shrink-0 btn btn-primary bg-LensTask-blue hover:bg-LensTask-blue-dark text-white px-4 py-2 rounded-md shadow-sm font-semibold">
               Ask LensTask
             </a>
-          </Link>
+          </Link> */}
         </div>
 
         {/* Profile Creator Section */}

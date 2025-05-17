@@ -40,31 +40,39 @@ export default function AskPage() {
     setIsLoading(true);
 
     try {
-      // TODO: Implement proper metadata construction
-      // This is a placeholder for the actual metadata you'll build
-      const metadata = {
-        version: '2.0.0', // Example Lens metadata version
-        metadata_id: `question-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
-        description: `Question: ${title}`, // Or use body for description
-        content: body, // The main question content
-        name: title, // Title of the post
-        attributes: [
-          {
-            traitType: 'type',
-            value: 'question',
-          },
-          // Add more attributes, e.g., for bounty if implemented
-        ],
-        // external_url: 'YOUR_APP_URL/question/ID_HERE', // Link back to your app
-        // image: 'URL_TO_AN_IMAGE_IF_ANY',
-        // app_id: 'YOUR_LENS_APP_ID', // Your Lens app ID
-        tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag), // Process tags
-        // locale: 'en-US', // Example
-      };
+      // // TODO: Implement proper metadata construction
+      // // This is a placeholder for the actual metadata you'll build
+      // const metadata = {
+      //   version: '2.0.0', // Example Lens metadata version
+      //   metadata_id: `question-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
+      //   description: `Question: ${title}`, // Or use body for description
+      //   content: body, // The main question content
+      //   name: title, // Title of the post
+      //   attributes: [
+      //     {
+      //       traitType: 'type',
+      //       value: 'question',
+      //     },
+      //     // Add more attributes, e.g., for bounty if implemented
+      //   ],
+      //   // external_url: 'YOUR_APP_URL/question/ID_HERE', // Link back to your app
+      //   // image: 'URL_TO_AN_IMAGE_IF_ANY',
+      //   // app_id: 'YOUR_LENS_APP_ID', // Your Lens app ID
+      //   tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag), // Process tags
+      //   // locale: 'en-US', // Example
+      // };
 
-      console.log("Submitting with metadata:", metadata);
+      // console.log("Submitting with metadata:", metadata);
 
-      await handlePost(body,state.stateSessionClient,state.stateActiveLensProfile); // Call the action from useSessionClient
+
+      // assemble your JSON payload
+      const payloadObject = { title, body };
+
+      // turn it into valid JSON text
+      const payloadString = JSON.stringify(payloadObject);
+
+      // now pass the string
+      await handlePost(payloadString, state.stateSessionClient, state.stateActiveLensProfile);
 
       setSuccess("Your question has been submitted successfully!");
       setTitle("");
