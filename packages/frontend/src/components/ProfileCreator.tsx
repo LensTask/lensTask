@@ -204,7 +204,7 @@ export default function ProfileCreator() {
                   state.stateSessionClient,
                   usernameSignUp
                 );
-                if(profile){
+                if(profile?.username){
                   actions.setStateActiveLensProfile(profile);
                 }
               }}

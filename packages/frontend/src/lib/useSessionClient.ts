@@ -175,7 +175,8 @@ const useSessionClient = () => {
     if (!result) {
       setFeedback('Error creating profile');
     }
-    if(result?.isErr()){
+    console.log(result)
+    if(result?.error){
       error('Error creating profile:', result.error);
       setFeedback(`Profile creation failed: ${result.error.message}`);
     }
