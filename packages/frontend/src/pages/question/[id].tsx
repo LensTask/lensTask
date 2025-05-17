@@ -10,14 +10,14 @@ import { getNftAddress, getPostActionAddress } from '../../lib/utils';
 
 // --- LENS CLIENT SDK V2 IMPORTS ---
 import {
-  AnyPublication, // For answers (comments)
-  Post,           // Specific type for the main question post
+  AnyPublication,
+  Post,
   PublicationId,
   PageInfo,
-  fetchPost,      // Use this for the main question
-  fetchPostReferences // For fetching comments (answers)
+  fetchPost,
+  fetchPostReferences
 } from "@lens-protocol/client/actions";
-import { client } from "../../lib/client"; // Adjust path
+import { client } from "../../lib/client";
 import { postId, PostReferenceType, WhoExecutedActionOnPostQuery } from "@lens-protocol/client";
 
 import useSessionClient from "../../lib/useSessionClient";
@@ -154,8 +154,8 @@ const QuestionDetail: NextPage = () => {
 
   const {
     data: winnerAddressRaw,
-    isLoading,
-    isError,
+    isLoading: winnerLoading,
+    isError: winnerError,
     error: readError,
   } = useContractRead({
     address: contractAddress!,
@@ -170,14 +170,19 @@ const QuestionDetail: NextPage = () => {
   });
 
   useEffect(() => {
-    console.log("⏳ isLoading:", isLoading);
-    console.log("❌ isError:", isError, readError);
+    console.log("⏳ winnerLoading:", winnerLoading);
+    console.log("❌ winnerError:", winnerError, readError);
     console.log("✅ winnerAddressRaw:", winnerAddressRaw);
-  }, [isLoading, isError, readError, winnerAddressRaw]);
+  }, [winnerLoading, winnerError, readError, winnerAddressRaw]);
 
   const winnerAddress = typeof winnerAddressRaw === "string"
     ? winnerAddressRaw.toLowerCase()
     : undefined;
+
+  // disable further accepts or new answers if there’s already a winner
+  const zeroAddress = "0x0000000000000000000000000000000000000000";
+  const hasWinner = executedCount > 0
+    || (winnerAddress && winnerAddress !== zeroAddress);
 
   // 4️⃣ Loading & error states
   if (isLoadingQuestion && !question && !error) {
@@ -283,8 +288,10 @@ const QuestionDetail: NextPage = () => {
           const answerMeta = answer.metadata as V2PublicationMetadata;
           const authorAddr = answer.author.owner.toLowerCase();
 
+          // only allow accept if no winner yet
           const canAccept =
             isConnected &&
+            !hasWinner &&
             question!.author.owner.toLowerCase() === connectedAddress?.toLowerCase() &&
             executedCount === 0;
 
@@ -330,7 +337,9 @@ const QuestionDetail: NextPage = () => {
 
       <hr className="my-8 border-gray-200 dark:border-gray-700" />
 
-      {question && <AnswerComposer parentId={question.id as PublicationId} />}
+      {question && !hasWinner && (
+        <AnswerComposer parentId={question.id as PublicationId} />
+      )}
     </main>
   );
 };

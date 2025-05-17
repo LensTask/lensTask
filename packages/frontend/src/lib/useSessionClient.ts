@@ -54,7 +54,7 @@ const useSessionClient = () => {
 
     log('Starting session check for address:', address);
     setIsCheckingLensSession(true);
-    setFeedback('Checking Lens session...');
+    setFeedback('checking Lens status...(Check pending signatures)');
 
     try {
 

@@ -44,7 +44,7 @@ export default function ProfileCreator() {
     return (
       <div className="my-4 p-4 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-center animate-pulse">
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          {isConnecting ? 'Connecting to wallet...' : 'Checking Lens status...'}
+          {isConnecting ? 'Connecting to wallet...(Check pending signatures)' : 'Checking Lens status...(Check pending signatures)'}
         </p>
       </div>
     );
@@ -56,7 +56,7 @@ export default function ProfileCreator() {
       <div className="my-4 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 rounded-lg text-center">
         <p className="text-sm text-amber-700 dark:text-amber-200 mb-3">
           Please connect your wallet to interact with Lens Protocol.
-        </p>
+      </p>
         <ConnectKitButton />
       </div>
     );

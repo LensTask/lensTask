@@ -53,20 +53,20 @@ export default function SimplePostCreator() {
       {/* Show loading state if session is still being checked by AuthContext */}
       {state.isLoadingSession && !isConnecting && (
         <div className="p-3 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-center animate-pulse">
-            <p className="text-sm text-slate-600 dark:text-slate-300">
-                Checking Lens session...
-            </p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            checking Lens status...Check pending signatures
+          </p>
         </div>
       )}
 
       {/* Show connect message if wallet not connected, or if session is loaded but no profile */}
       {(!isConnected || (!state.isLoadingSession && !state.stateActiveLensProfile)) && !isConnecting && (
         <div className="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 rounded-md text-center">
-            <p className="text-sm text-amber-700 dark:text-amber-200">
+          <p className="text-sm text-amber-700 dark:text-amber-200">
             Please connect your wallet and ensure you have an active Lens profile to create a post.
-            </p>
-            {/* You might want to link to your ProfileCreator or a login component here */}
-            {/* Original placeholder button:
+          </p>
+          {/* You might want to link to your ProfileCreator or a login component here */}
+          {/* Original placeholder button:
              <button
                 onClick={() => alert("Connect Wallet/Login functionality will be in the Navbar.")}
                 className="mt-2 px-4 py-1.5 bg-kintask-blue text-white text-xs font-medium rounded-md hover:bg-kintask-blue-dark transition-colors"
@@ -90,10 +90,9 @@ export default function SimplePostCreator() {
           />
 
           {feedback && ( // Feedback from the handlePost action
-            <p className={`mt-2 text-sm p-2 rounded-md ${
-                feedback.startsWith('❌') || feedback.startsWith('⚠️')
-                  ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                  : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+            <p className={`mt-2 text-sm p-2 rounded-md ${feedback.startsWith('❌') || feedback.startsWith('⚠️')
+                ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
               }`}>
               {feedback}
             </p>
@@ -104,7 +103,7 @@ export default function SimplePostCreator() {
               if (state.stateActiveLensProfile) { // Ensure profile is still there before posting
                 // The handlePost function from useSessionClient likely uses the
                 // active profile and sessionClient it has internally.
-                await handlePost(content,state.stateSessionClient,state.stateActiveLensProfile); // Call the action from useSessionClient
+                await handlePost(content, state.stateSessionClient, state.stateActiveLensProfile); // Call the action from useSessionClient
                 setContent(''); // Clear input on presumed success (handlePost should manage feedback)
               } else {
                 // This case should ideally be prevented by the UI rendering conditions
@@ -116,13 +115,13 @@ export default function SimplePostCreator() {
             className="mt-4 px-6 py-2 bg-kintask-blue hover:bg-kintask-blue-dark text-white font-medium rounded-md disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-kintask-blue focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-opacity"
           >
             {isPosting ? ( // isPosting from useSessionClient (action-specific loading)
-                 <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Posting...
-                </>
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Posting...
+              </>
             ) : 'Create Post'}
           </button>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
