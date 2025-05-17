@@ -172,12 +172,13 @@ const useSessionClient = () => {
         setFeedback(`Profile creation sucessfull`);
         return accountData
       });
-    if(result.isErr()){
-      error('Error creating profile:', result.error);
-      setFeedback(`Profile creation failed: ${result.error.message}`);
-    }
     if (!result) {
       setFeedback('Error creating profile');
+    }
+    console.log(result)
+    if(result?.error){
+      error('Error creating profile:', result.error);
+      setFeedback(`Profile creation failed: ${result.error.message}`);
     }
     return result;
   };
