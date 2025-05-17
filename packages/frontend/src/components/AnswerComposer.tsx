@@ -1,33 +1,27 @@
 // src/components/AnswerComposer.tsx
 
 import { useState } from "react";
-// Assuming PublicationId type can be a simple string for now if not using Lens SDK
-// If you are using a typed ID from your page component, import that type.
-// For example: import { PublicationId } from "@lens-protocol/client/actions";
 import { useAppContext } from '../context/useAppState';
 import useSessionClient from '../lib/useSessionClient';
 
 interface AnswerComposerProps {
-  parentId: string; // ID of the publication (question) being commented on
-  // activeProfile prop can be added back when login is implemented
-  // activeProfile?: { handle?: { fullHandle: string } | null, id: string } | null;
+  parentId: string;
+  /** Called after a successful post: (commentId, content, yourProfileName) */
+  onSuccess?: (commentId: string, content: string, profileName: string) => void;
 }
 
-export default function AnswerComposer({ parentId }: AnswerComposerProps) {
+export default function AnswerComposer({
+  parentId,
+  onSuccess,
+}: AnswerComposerProps) {
   const [text, setText] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false); // Local submitting state
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
   const [uiSuccess, setUiSuccess] = useState<string | null>(null);
-  const { state,actions } = useAppContext();
+  const { state } = useAppContext();
+  const { handleCommentOnPost } = useSessionClient();
 
-  const {
-    handleCommentOnPost
- 
-  } = useSessionClient();
-
-
-  // Placeholder for active profile - to be replaced with actual Lens session data
-  const activeProfile = state.stateActiveLensProfile; // SIMULATED: No active profile initially
+  const activeProfile = state.stateActiveLensProfile;
 
   const submitAnswer = async () => {
     if (!activeProfile) {
@@ -41,40 +35,39 @@ export default function AnswerComposer({ parentId }: AnswerComposerProps) {
 
     setUiError(null);
     setUiSuccess(null);
-    setIsSubmitting(true); // Set local submitting state
+    setIsSubmitting(true);
 
-    console.log(`[AnswerComposer] Pretending to submit comment on ${parentId} with content: "${text.substring(0, 50)}..."`);
+    // actually submit
+    const commentResult = await handleCommentOnPost(
+      text,
+      parentId,
+      state.stateSessionClient
+    );
 
-    const commentResult = await handleCommentOnPost(text,parentId,state.stateSessionClient);
-    console.log("Comment Result:");
-    console.log(commentResult)
+    const txOrId = commentResult?.value?.hash;
+    const simulatedSuccess = Boolean(txOrId);
 
-    const simulatedSuccess = commentResult?.value?.hash ? true : false; // Change to false to test error path
-    const simulatedTxOrPubId = commentResult?.value?.hash;
-    if (simulatedSuccess) {
-      setUiSuccess(`✅ Post submitted! (ID/Tx: ${simulatedTxOrPubId.substring(0, 12)}...). Refresh feed to see.`)
-      setText("");       // Clear input
-      console.log("[AnswerComposer] Simulated submission successful.");
-      // Optionally: Trigger a refetch of comments for the parent publication on the parent page
+    const submittedText = text;       // capture before clearing
+    if (simulatedSuccess && txOrId) {
+      setUiSuccess(`✅ Post submitted! (ID/Tx: ${txOrId.substring(0,12)}...)`);
+      setText("");
+      // invoke parent callback with id, content, and your handle
+      onSuccess?.(txOrId, submittedText, activeProfile.username?.localName || "");
     } else {
-      setUiError("Simulated submission failed. Please try again.");
-      console.error("[AnswerComposer] Simulated submission failed.");
+      setUiError("Submission failed. Please try again.");
     }
-    // --- END SIMULATED SUBMISSION ---
 
-    setIsSubmitting(false); // Reset local submitting state
+    setIsSubmitting(false);
   };
 
-  // --- UI when user is NOT logged in (placeholder logic) ---
-  if (!activeProfile) { // This check will always be true with `activeProfile = null`
+  if (!activeProfile) {
     return (
       <div className="mt-6 border-t pt-6 dark:border-gray-700">
         <p className="text-sm text-center text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-4 rounded-md">
           Please sign in with your Lens Profile to post an answer.
           <br />
-          {/* Placeholder for login button/action */}
           <button
-            onClick={() => alert("Login/Connect Wallet functionality will be implemented here.")}
+            onClick={() => alert("Login/Connect Wallet…")}
             className="mt-2 text-kintask-blue hover:underline font-semibold"
           >
             Connect Wallet & Sign In with Lens
@@ -84,24 +77,21 @@ export default function AnswerComposer({ parentId }: AnswerComposerProps) {
     );
   }
 
-  // --- UI when user IS logged in (this part will be hidden initially) ---
   return (
     <div className="mt-6 border-t pt-6 dark:border-gray-700">
       <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Your Answer</h3>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-kintask-blue focus:border-kintask-blue transition-colors placeholder-gray-400 dark:placeholder-gray-500 disabled:opacity-50"
+        className="w-full p-3 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-kintask-blue transition-colors placeholder-gray-400 dark:placeholder-gray-500 disabled:opacity-50"
         rows={5}
-        placeholder={`Replying as @${activeProfile.username?.localName} Type your insightful answer here.`}
+        placeholder={`Replying as @${activeProfile.username?.localName}…`}
         disabled={isSubmitting}
         aria-label="Your answer content"
       />
 
       {uiError && (
-        <p className="text-red-600 dark:text-red-400 text-sm mt-2">
-          Error: {uiError}
-        </p>
+        <p className="text-red-600 dark:text-red-400 text-sm mt-2">Error: {uiError}</p>
       )}
       {uiSuccess && (
         <p className="text-green-600 dark:text-green-400 text-sm mt-2">{uiSuccess}</p>
@@ -109,8 +99,8 @@ export default function AnswerComposer({ parentId }: AnswerComposerProps) {
 
       <button
         onClick={submitAnswer}
-        className="mt-4 px-6 py-2 bg-kintask-blue hover:bg-kintask-blue-dark text-white font-medium rounded-md disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-kintask-blue focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-opacity"
-        disabled={isSubmitting || !text.trim()} // Active profile check is done above
+        className="mt-4 px-6 py-2 bg-kintask-blue text-white rounded-md disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-kintask-blue transition-opacity"
+        disabled={isSubmitting || !text.trim()}
       >
         {isSubmitting ? "Submitting Answer..." : "Post Answer"}
       </button>

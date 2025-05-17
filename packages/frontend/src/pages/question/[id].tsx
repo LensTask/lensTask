@@ -5,15 +5,14 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import React, { useState, useEffect } from 'react';
 
-import { useContractRead, useAccount, useSignMessage, useWalletClient } from 'wagmi';
-import { getNftAddress, getPostActionAddress } from '../../lib/utils';
+import { useContractRead, useAccount, useWalletClient } from 'wagmi';
+import { getPostActionAddress } from '../../lib/utils';
 
 // --- LENS CLIENT SDK V2 IMPORTS ---
 import {
   AnyPublication,
   Post,
   PublicationId,
-  PageInfo,
   fetchPost,
   fetchPostReferences
 } from "@lens-protocol/client/actions";
@@ -26,7 +25,6 @@ import AcceptAnswerButton from "@/components/AcceptAnswerButton";
 import QuestionDetailSkeleton from "@/components/QuestionDetailSkeleton";
 import { InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 
-
 interface FetchError {
   message: string;
   type?: 'question' | 'answers';
@@ -37,91 +35,84 @@ interface V2PublicationMetadata {
   title?: string | null;
   content?: string | null;
   description?: string | null;
-  tags?: string[] | null;
-  attachments?: Array<{ item: string; type: string; }> | null;
-  image?: string | null;
-  media?: Array<{ item: string; type: string; }> | null;
 }
 
-const renderV2Content = (metadata: V2PublicationMetadata | null | undefined): JSX.Element => {
-  if (!metadata) {
-    return <p className="text-gray-600 dark:text-gray-400">No content details available.</p>;
-  }
-  const displayContent = metadata.content || metadata.description || metadata.title || "";
-  const isHtml = /<[a-z][\s\S]*>/i.test(displayContent);
-  if (isHtml) {
-    return (
-      <div
-        className="prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200"
-        dangerouslySetInnerHTML={{ __html: displayContent }}
-      />
-    );
-  }
-  return (
-    <p className="whitespace-pre-line break-words text-gray-800 dark:text-gray-200">
-      {displayContent}
-    </p>
-  );
+const renderV2Content = (m: V2PublicationMetadata | null | undefined): JSX.Element => {
+  if (!m) return <p>No content.</p>;
+  const txt = m.content || m.description || m.title || "";
+  const isHtml = /<[a-z][\s\S]*>/i.test(txt);
+  return isHtml
+    ? <div className="prose dark:prose-invert" dangerouslySetInnerHTML={{ __html: txt }} />
+    : <p className="whitespace-pre-line">{txt}</p>;
 };
 
 const QuestionDetail: NextPage = () => {
   const router = useRouter();
-  const { id: publicationIdFromQuery } = router.query;
-  const { address: connectedAddress, isConnected, chainId } = useAccount();
+  const { id: pubIdQ } = router.query;
+  const { address: me, isConnected, chainId } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { handleAssignResponseWinner } = useSessionClient();
 
-  // State
+  // ── STATE ───────────────────────────────────────────────────────────────
   const [question, setQuestion] = useState<Post | null>(null);
   const [answers, setAnswers] = useState<AnyPublication[]>([]);
+  const [pendingAnswers, setPendingAnswers] = useState<AnyPublication[]>([]);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(true);
   const [isLoadingAnswers, setIsLoadingAnswers] = useState(false);
   const [error, setError] = useState<FetchError | null>(null);
-  const [answersPageInfo, setAnswersPageInfo] = useState<PageInfo | null>(null);
   const [executedCount, setExecutedCount] = useState(0);
 
-  // 1️⃣ Fetch Question & Answers
+  // ← NEW: bump this to re-trigger data loads
+  const [refreshCounter, setRefreshCounter] = useState(0);
+
+  // ── HELPERS ─────────────────────────────────────────────────────────────
+  async function fetchAnswers(qId: string) {
+    setIsLoadingAnswers(true);
+    const res = await fetchPostReferences(client, {
+      referencedPost: qId,
+      referenceTypes: [PostReferenceType.CommentOn],
+    });
+    if (res.isErr()) {
+      setError({ message: res.error.message, type: 'answers' });
+      setAnswers([]);
+    } else {
+      const server = res.value.items
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      const seen = new Set(server.map(a => a.id));
+      setPendingAnswers(p => p.filter(x => !seen.has(x.id)));
+      setAnswers(server);
+    }
+    setIsLoadingAnswers(false);
+  }
+
+  // ── EFFECTS ─────────────────────────────────────────────────────────────
+  // 1️⃣ Load question + answers when pubIdQ or refreshCounter changes
   useEffect(() => {
-    const idStr = Array.isArray(publicationIdFromQuery)
-      ? publicationIdFromQuery[0]
-      : publicationIdFromQuery;
+    const idStr = Array.isArray(pubIdQ) ? pubIdQ[0] : pubIdQ;
     if (!idStr) {
       setIsLoadingQuestion(false);
       return;
     }
-    const qPubId = postId(idStr);
-
+    const qId = postId(idStr);
     (async () => {
       setIsLoadingQuestion(true);
       setError(null);
-
-      // Fetch the question
-      const qRes = await fetchPost(client, { post: qPubId });
+      const qRes = await fetchPost(client, { post: qId });
       if (qRes.isErr() || !qRes.value || qRes.value.__typename !== 'Post') {
-        setError({ message: qRes.isErr() ? qRes.error.message : 'Question not found', type: 'question' });
+        setError({
+          message: qRes.isErr() ? qRes.error.message : 'Question not found',
+          type: 'question',
+        });
         setIsLoadingQuestion(false);
         return;
       }
       setQuestion(qRes.value);
       setIsLoadingQuestion(false);
-
-      // Fetch the answers
-      setIsLoadingAnswers(true);
-      const aRes = await fetchPostReferences(client, {
-        referencedPost: qRes.value.id,
-        referenceTypes: [PostReferenceType.CommentOn],
-      });
-      if (aRes.isErr()) {
-        setError({ message: aRes.error.message, type: 'answers' });
-      } else {
-        setAnswers(aRes.value.items);
-        setAnswersPageInfo(aRes.value.pageInfo);
-      }
-      setIsLoadingAnswers(false);
+      await fetchAnswers(qRes.value.id);
     })();
-  }, [publicationIdFromQuery]);
+  }, [pubIdQ, refreshCounter]);
 
-  // 2️⃣ Fetch executor count
+  // 2️⃣ Executor count
   useEffect(() => {
     if (!question?.id) return;
     (async () => {
@@ -130,203 +121,159 @@ const QuestionDetail: NextPage = () => {
       });
       setExecutedCount(res.isErr() ? 0 : res.value.items.length);
     })();
-  }, [question]);
+  }, [question, refreshCounter]);
 
-  // 3️⃣ Read on-chain winner
-  const minimalAbi = [
-    {
-      inputs: [
-        { internalType: 'address', name: 'feed', type: 'address' },
-        { internalType: 'uint256', name: 'postId', type: 'uint256' },
-      ],
-      name: 'getBountyWinner',
-      outputs: [{ internalType: 'address', name: '', type: 'address' }],
-      stateMutability: 'view',
-      type: 'function',
-    },
-  ] as const;
+  // 3️⃣ On-chain winner
+  const minimalAbi = [{
+    inputs: [
+      { internalType: 'address', name: 'feed', type: 'address' },
+      { internalType: 'uint256', name: 'postId', type: 'uint256' }
+    ],
+    name: 'getBountyWinner',
+    outputs: [{ internalType: 'address', name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function'
+  }] as const;
 
-  console.log("chainId:", chainId);
   const contractAddress = chainId
     ? (getPostActionAddress(chainId) as `0x${string}`)
-    : ("0x0000000000000000000000000000000000000000" as `0x${string}`);
-  console.log("contractAddress:", contractAddress);
+    : undefined;
 
   const {
-    data: winnerAddressRaw,
+    data: winnerRaw,
     isLoading: winnerLoading,
-    isError: winnerError,
-    error: readError,
+    refetch: refetchWinner
   } = useContractRead({
     address: contractAddress!,
     abi: minimalAbi,
-    functionName: "getBountyWinner",
-    args: question
-      ? [question.feed.address, BigInt(question.id)]
-      : undefined,
+    functionName: 'getBountyWinner',
+    args: question ? [question.feed.address, BigInt(question.id)] : undefined,
     chainId,
     watch: false,
     query: { enabled: Boolean(question && chainId) },
   });
 
-  useEffect(() => {
-    console.log("⏳ winnerLoading:", winnerLoading);
-    console.log("❌ winnerError:", winnerError, readError);
-    console.log("✅ winnerAddressRaw:", winnerAddressRaw);
-  }, [winnerLoading, winnerError, readError, winnerAddressRaw]);
-
-  const winnerAddress = typeof winnerAddressRaw === "string"
-    ? winnerAddressRaw.toLowerCase()
+  const winnerAddress = typeof winnerRaw === 'string'
+    ? winnerRaw.toLowerCase()
     : undefined;
-
-  // disable further accepts or new answers if there’s already a winner
-  const zeroAddress = "0x0000000000000000000000000000000000000000";
   const hasWinner = executedCount > 0
-    || (winnerAddress && winnerAddress !== zeroAddress);
+    || (winnerAddress && winnerAddress !== "0x0000000000000000000000000000000000000000");
 
-  // 4️⃣ Loading & error states
-  if (isLoadingQuestion && !question && !error) {
+  // Wait for walletClient if connected
+  const walletReady = !isConnected || Boolean(walletClient);
+
+  // ── LOADING GATE ─────────────────────────────────────────────────────────
+  const isPageLoading = isLoadingQuestion || isLoadingAnswers || winnerLoading || !walletReady;
+  if (isPageLoading) {
     return <QuestionDetailSkeleton />;
   }
+
+  // ── ERROR STATES ─────────────────────────────────────────────────────────
   if (error?.type === 'question') {
     return (
       <main className="max-w-3xl mx-auto p-4">
         <button onClick={() => router.back()} className="mb-4 text-kintask-blue hover:underline">
           ← Back
         </button>
-        <div className="bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-md shadow-md" role="alert">
-          <div className="flex">
-            <ExclamationTriangleIcon className="h-6 w-6 text-red-500 dark:text-red-400 mr-3" />
-            <div>
-              <p className="font-bold">Error Loading Question</p>
-              <p className="text-sm">{error.message}</p>
-            </div>
+        <div className="bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded shadow">
+          <ExclamationTriangleIcon className="h-6 w-6 text-red-500 dark:text-red-400 mr-3" />
+          <div>
+            <p className="font-bold">Error Loading Question</p>
+            <p className="text-sm">{error.message}</p>
           </div>
         </div>
       </main>
     );
   }
-  if (!isLoadingQuestion && !question) {
+  if (!question) {
     return (
       <main className="max-w-3xl mx-auto p-4">
         <button onClick={() => router.back()} className="mb-4 text-kintask-blue hover:underline">
           ← Back
         </button>
-        <div className="bg-sky-100 dark:bg-sky-900/50 border-l-4 border-sky-500 text-sky-700 dark:text-sky-300 p-4 rounded-md shadow-md" role="alert">
-          <div className="flex">
-            <InformationCircleIcon className="h-6 w-6 text-sky-500 dark:text-sky-400 mr-3" />
-            <div>
-              <p className="font-bold">Question Not Found</p>
-              <p className="text-sm">The question ID "{publicationIdFromQuery}" could not be found.</p>
-            </div>
+        <div className="bg-sky-100 dark:bg-sky-900/50 border-l-4 border-sky-500 text-sky-700 dark:text-sky-300 p-4 rounded shadow">
+          <InformationCircleIcon className="h-6 w-6 text-sky-500 dark:text-sky-400 mr-3" />
+          <div>
+            <p className="font-bold">Question Not Found</p>
+            <p className="text-sm">ID "{pubIdQ}" not found.</p>
           </div>
         </div>
       </main>
     );
   }
 
-  // 5️⃣ Render
-  const metadata = question.metadata as V2PublicationMetadata;
-  const parsed = JSON.parse(metadata.content || "{}");
-  const questionTitle = parsed.title || "Question Details";
-  const questionBody = parsed.body || "";
+  // ── FINAL RENDER ─────────────────────────────────────────────────────────
+  const meta = question.metadata as V2PublicationMetadata;
+  const parsed = JSON.parse(meta.content || '{}');
+  const title = parsed.title || 'Question Details';
+  const body = parsed.body || '';
+  const displayAnswers = [...pendingAnswers, ...answers];
 
   return (
     <main className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
       <Link href="/" legacyBehavior>
-        <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
+        <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 text-sm">
           ← Back to All Questions
         </a>
       </Link>
 
       <article className="bg-white dark:bg-slate-800 shadow-xl rounded-lg p-6 border dark:border-slate-700 mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-3 text-gray-900 dark:text-white break-words">
-          {questionTitle}
-        </h1>
-        <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400 mb-4">
-          <span>
-            By: {question.author.username?.localName || question.author.address.substring(0, 6) + "..."}
-          </span>
-          <span>·</span>
-          <span title={question.id}>ID: {question.id.substring(0, 10)}...</span>
-          <span>·</span>
-          <span>
-            Posted: {new Date(question.timestamp).toLocaleDateString()}{" "}
-            {new Date(question.timestamp).toLocaleTimeString()}
-          </span>
+        <h1 className="text-2xl font-bold mb-3 dark:text-white">{title}</h1>
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          By: {question.author.username?.localName || `${question.author.address.slice(0,6)}...`} ·
+          ID: {question.id.slice(0,10)}… · {new Date(question.timestamp).toLocaleString()}
         </div>
-        <div className="prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200">
-          {questionBody}
-        </div>
+        <div className="prose dark:prose-invert">{body}</div>
       </article>
 
       <hr className="my-8 border-gray-200 dark:border-gray-700" />
 
-      <h2 className="text-xl sm:text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-200">
-        Answers ({isLoadingAnswers ? "Loading..." : answers.length})
+      <h2 className="text-xl font-semibold mb-4 dark:text-gray-200">
+        Answers ({displayAnswers.length})
       </h2>
+
       <section className="space-y-6">
-        {isLoadingAnswers && answers.length === 0 && Array.from({ length: 2 }).map((_, i) => (
-          <div
-            key={i}
-            className="border dark:border-gray-700 p-4 rounded-lg bg-white dark:bg-gray-800 shadow-md animate-pulse h-24"
-          />
-        ))}
-
-        {error?.type === 'answers' && (
-          <div className="bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-md shadow-md" role="alert">
-            <p className="font-bold">Error Loading Answers</p>
-            <p className="text-sm">{error.message}</p>
-          </div>
-        )}
-
-        {!isLoadingAnswers && answers.length === 0 && !error && (
-          <p className="text-gray-500 dark:text-gray-400">No answers yet. Be the first to reply!</p>
-        )}
-
-        {answers.map(answer => {
-          const answerMeta = answer.metadata as V2PublicationMetadata;
-          const authorAddr = answer.author.owner.toLowerCase();
-
-          // only allow accept if no winner yet
-          const canAccept =
-            isConnected &&
-            !hasWinner &&
-            question!.author.owner.toLowerCase() === connectedAddress?.toLowerCase() &&
-            executedCount === 0;
-
-          const isWinner = winnerAddress === authorAddr;
+        {displayAnswers.map(answer => {
+          const m = answer.metadata as V2PublicationMetadata;
+          const aid = answer.author.owner.toLowerCase();
+          const isWinner = winnerAddress === aid;
+          const canAccept = isConnected
+            && !hasWinner
+            && question.author.owner.toLowerCase() === me?.toLowerCase()
+            && executedCount === 0;
 
           return (
             <div
               key={answer.id}
-              className={`border p-4 rounded-lg shadow-md bg-white dark:bg-gray-800 dark:border-gray-700 ${
-                isWinner
-                  ? "border-green-500 bg-green-50 dark:bg-green-900/30"
-                  : ""
-              }`}
+              className={`
+                border p-4 rounded-lg shadow-md bg-white dark:bg-gray-800 dark:border-gray-700
+                ${isWinner ? 'border-green-500 bg-green-50 dark:bg-green-900/30' : ''}
+                ${hasWinner && !isWinner ? 'opacity-50 pointer-events-none' : ''}
+              `}
             >
-              <div className="mb-2">{renderV2Content(answerMeta)}</div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                Answer by:{" "}
-                {answer.author.username?.localName || answer.author.address.substring(0, 6) + "..."}
-                <span className="mx-1">·</span>
-                {new Date(answer.timestamp).toLocaleDateString()}{" "}
-                {new Date(answer.timestamp).toLocaleTimeString()}
+              <div className="mb-2">{renderV2Content(m)}</div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Answer by {answer.author.username?.localName || `${answer.author.address.slice(0,6)}...`} ·
+                {new Date(answer.timestamp).toLocaleString()}
               </p>
 
               {isWinner && (
                 <span className="inline-block mt-2 px-2 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded">
-                  Winner 🎉
+                  ACCEPTED ANSWER 🎉
                 </span>
               )}
 
               {canAccept && (
                 <div className="mt-3 pt-3 border-t dark:border-gray-600">
                   <AcceptAnswerButton
-                    questionId={question!.id as PublicationId}
+                    questionId={question.id}
                     feedAddress={answer.feed.address}
                     winnerAddress={answer.author.owner}
+                    onSuccess={() => {
+                      // bump refreshCounter to reload everything
+                      setRefreshCounter(x => x + 1);
+                      refetchWinner();
+                    }}
                   />
                 </div>
               )}
@@ -338,7 +285,26 @@ const QuestionDetail: NextPage = () => {
       <hr className="my-8 border-gray-200 dark:border-gray-700" />
 
       {question && !hasWinner && (
-        <AnswerComposer parentId={question.id as PublicationId} />
+        <AnswerComposer
+          parentId={question.id as PublicationId}
+          onSuccess={(cid, content, profile) => {
+            const fake: AnyPublication = {
+              __typename: 'Comment',
+              id: cid,
+              metadata: { __typename: 'V2PublicationMetadata', content },
+              author: {
+                owner: me as string,
+                username: { localName: profile },
+              },
+              feed: { address: question.feed.address },
+              timestamp: new Date().toISOString(),
+            };
+            setPendingAnswers(p => [fake, ...p]);
+            // re-fetch real answers + on-chain winner
+            setRefreshCounter(x => x + 1);
+            refetchWinner();
+          }}
+        />
       )}
     </main>
   );
