@@ -216,19 +216,6 @@ const PublicationCard: React.FC<PublicationCardProps> = ({ pub }) => {
         </a>
       </Link>
 
-      {/* Tags */}
-      {tags.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {tags.slice(0, 4).map((tag, index) => (
-            <span
-              key={`${tag}-${index}`}
-              className="inline-block bg-slate-100 dark:bg-slate-700 rounded-full px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600"
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* Stats & Actions */}
       <div className="mt-auto pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">

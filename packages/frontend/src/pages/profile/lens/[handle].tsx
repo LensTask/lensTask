@@ -110,6 +110,11 @@ const ProfilePage: NextPage = () => {
       const publicationsResult = await fetchPosts(client, {
         filter: {
           authors: authorAddress, // the author's EVM address
+          metadata: {
+            // contentWarning: { oneOf: [ContentWarning.Sensitive] },
+            // mainContentFocus: [MainContentFocus.Image],
+            tags: { all: ["lens-task-test", "question"] },
+          },
         },
       });
 

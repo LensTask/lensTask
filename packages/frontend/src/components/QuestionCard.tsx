@@ -164,18 +164,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
       )}
 
 
-      {tags && tags.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {tags.slice(0, 5).map((tag, index) => ( // Display up to 5 tags
-            <span
-              key={`${tag}-${index}`}
-              className="inline-block bg-slate-100 dark:bg-slate-700 rounded-full px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300"
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
 
       <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-3 mt-auto">
         <div className="flex items-center space-x-3 sm:space-x-4">
