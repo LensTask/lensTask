@@ -111,7 +111,7 @@ const Home: NextPage = () => {
 
         {/* Profile Creator Section */}
         <div className="my-8 p-6 bg-white dark:bg-slate-800 shadow-xl rounded-lg">
-          <h2 className="text-xl font-semibold mb-4 text-center text-gray-700 dark:text-gray-300">Manage Your Lens Profile</h2>
+          {/* <h2 className="text-xl font-semibold mb-4 text-center text-gray-700 dark:text-gray-300">Manage Your Lens Profile</h2> */}
           <ProfileCreator />
         </div>
         {/* End Profile Creator Section */}

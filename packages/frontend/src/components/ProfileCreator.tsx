@@ -74,7 +74,7 @@ export default function ProfileCreator() {
           </p>
         </div>
         {/* Debug Panel */}
-        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 border rounded text-xs">
+        {/* <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 border rounded text-xs">
           <h4 className="font-semibold mb-2">Debug Panel</h4>
           <pre className="overflow-auto bg-black bg-opacity-10 p-2 rounded">
             {JSON.stringify(
@@ -89,9 +89,9 @@ export default function ProfileCreator() {
               2
             )}
           </pre>
-        </div>
+        </div> */}
         {/* Assign Bounty Winner */}
-        <div className="mt-4 p-4 border-t dark:border-slate-700">
+        {/* <div className="mt-4 p-4 border-t dark:border-slate-700">
           <h5 className="text-lg font-semibold mb-2">Assign Bounty Winner</h5>
           <input
             type="text"
@@ -121,7 +121,7 @@ export default function ProfileCreator() {
           >
             Assign Bounty
           </button>
-        </div>
+        </div> */}
       </>
     );
   }
