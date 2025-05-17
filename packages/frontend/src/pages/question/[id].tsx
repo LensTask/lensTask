@@ -256,7 +256,7 @@ const QuestionDetail: NextPage = () => {
 
                         questionId={question.id as PublicationId}
                         feedAddress={answer.feed.address} // This is the comment's ID
-                        winnerAddress={answer.author.address} // Answerer's profile ID
+                        winnerAddress={answer.author.owner} // Answerer's profile ID
                         // moduleActionId={bountyCollectModuleAddress as `0x${string}`} // Re-evaluate bounty module for V2
                     />
                   </div>
