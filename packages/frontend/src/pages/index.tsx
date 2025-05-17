@@ -51,7 +51,7 @@ const Home: NextPage = () => {
             metadata: {
               // contentWarning: { oneOf: [ContentWarning.Sensitive] },
               // mainContentFocus: [MainContentFocus.Image],
-              tags: { all: ["lens-task-test", "question"] },
+              tags: { all: ["lens-task-test-v2", "question"] },
             },
           },
 
@@ -118,7 +118,7 @@ const Home: NextPage = () => {
 
         <div className="my-8 p-6 bg-white dark:bg-slate-800 shadow-xl rounded-lg">
           <h2 className="text-xl font-semibold mb-4 text-center text-gray-700 dark:text-gray-300">Create a Lens Post</h2>
-          <SimplePostCreator /> {/* Ensure this adds the correct tags/appId for LensTask questions if used for that */}
+           {/* Ensure this adds the correct tags/appId for LensTask questions if used for that */}
         </div>
 
         {/* Conditional Rendering based on state */}

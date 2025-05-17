@@ -44,7 +44,7 @@ export default function ProfileCreator() {
     return (
       <div className="my-4 p-4 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-center animate-pulse">
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          {isConnecting ? 'Connecting to wallet...' : 'Checking Lens status...'}
+          {isConnecting ? 'Connecting to wallet...' : 'Checking Lens status...(Check pending signatures)'}
         </p>
       </div>
     );
@@ -204,7 +204,7 @@ export default function ProfileCreator() {
                   state.stateSessionClient,
                   usernameSignUp
                 );
-                if(profile.username){
+                if(profile?.username){
                   actions.setStateActiveLensProfile(profile);
                 }
               }}

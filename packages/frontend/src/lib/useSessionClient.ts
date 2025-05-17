@@ -254,7 +254,7 @@ const useSessionClient = () => {
 
     const metadata = textOnly({
       content: "content",
-      tags: ["question", "lens-task-test"],
+      tags: ["question", "lens-task-test-v2"],
     });
 
     // — build the single key/value param your Solidity expects —
@@ -349,7 +349,7 @@ const useSessionClient = () => {
     console.log('[SimplePostCreator] Content for post:', content);
     const metadata = textOnly({
       content: content,
-      tags: ["question", "lens-task-test"],
+      tags: ["question", "lens-task-test-v2"],
     });
 
 
@@ -404,7 +404,7 @@ const useSessionClient = () => {
 
     const metadata = textOnly({
       content: content,
-      tags: ["answer", "lens-task-test"],
+      tags: ["answer", "lens-task-test-v2"],
 
     });
 

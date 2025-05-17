@@ -57,7 +57,7 @@ const MyQuestions: NextPage = () => {
           filter: {
             metadata: {
               tags: {
-               all: ["lens-task-test","question"] // Or use 'all'
+               all: ["lens-task-test-v2","question"] // Or use 'all'
               }
             },
             authors: [evmAddress(state.stateActiveLensProfile.address)],

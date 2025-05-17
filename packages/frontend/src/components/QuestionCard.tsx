@@ -88,19 +88,28 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
   let title = "Untitled Question";
   let contentSnippet = metadata?.content || "No content preview available."; // Default to content
 
+
+  let questionTitle="test";
+  try {
+    questionTitle = JSON.parse(metadata?.content!).title;
+  }
+  catch{
+    questionTitle= "test";
+  }
+
   // More robust metadata handling based on __typename
   if (metadata) {
     switch (metadata.__typename) {
       case 'ArticleMetadataV3': // Assuming V3 metadata if __typename ends with V3
       case 'ArticleMetadata':
-        title = metadata.title || (metadata.content ? (metadata.content.substring(0, 70) + (metadata.content.length > 70 ? "..." : "")) : "Untitled Article");
+        title = questionTitle || (metadata.content ? (metadata.content.substring(0, 70) + (metadata.content.length > 70 ? "..." : "")) : "Untitled Article");
         contentSnippet = metadata.content || "No content available.";
         break;
       case 'TextOnlyMetadataV3':
       case 'TextOnlyMetadata':
         // For TextOnly, content is the main field.
-        title = metadata.content ? (metadata.content.substring(0, 70) + (metadata.content.length > 70 ? "..." : "")) : "Untitled Post";
-        contentSnippet = metadata.content || "No content available.";
+        title = questionTitle=="test" ? (metadata.content.substring(0, 70) + (metadata.content.length > 70 ? "..." : "")) :questionTitle;
+        // contentSnippet = metadata.content || "No content available.";
         break;
       // Add cases for other metadata types you expect (Image, Video, etc.)
       // case 'ImageMetadataV3':
@@ -110,7 +119,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
       default:
         // Fallback if metadata type is unknown or not handled
         title = metadata.content ? (metadata.content.substring(0, 70) + (metadata.content.length > 70 ? "..." : "")) : (metadata.title || "Lens Publication");
-        contentSnippet = metadata.content || "Content not directly extractable for this metadata type.";
+        // contentSnippet = metadata.content || "Content not directly extractable for this metadata type.";
         break;
     }
   }
@@ -146,7 +155,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 truncate">
             Asked by{' '}
             <Link href={`/profile/lens/${displayHandle.replace('/', ':')}`} legacyBehavior>
-                <a className="font-medium hover:underline">{displayHandle}</a>
+              <a className="font-medium hover:underline">{displayHandle}</a>
             </Link>
             {' on '}
             {new Date(pub.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
@@ -156,12 +165,12 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
 
       {/* Optional: Display a short snippet of the content if it's different from the title and not too long */}
       {/* This can be useful if your 'title' is just a short part of the actual question */}
-      {contentSnippet && contentSnippet !== title && (
+      {/* {contentSnippet && contentSnippet !== title && (
         <p className="text-sm text-slate-700 dark:text-slate-300 mb-4 leading-relaxed max-h-20 overflow-hidden relative group">
-            {contentSnippet}
-            {contentSnippet.length >= 147 && <span className="absolute bottom-0 right-0 bg-gradient-to-l from-white dark:from-slate-800 via-white/80 dark:via-slate-800/80 to-transparent w-1/3 h-full group-hover:hidden"></span>}
+          {contentSnippet}
+          {contentSnippet.length >= 147 && <span className="absolute bottom-0 right-0 bg-gradient-to-l from-white dark:from-slate-800 via-white/80 dark:via-slate-800/80 to-transparent w-1/3 h-full group-hover:hidden"></span>}
         </p>
-      )}
+      )} */}
 
 
 

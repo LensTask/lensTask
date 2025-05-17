@@ -192,7 +192,11 @@ const QuestionDetail: NextPage = () => {
 
   // `question` is now guaranteed to be a V2 `Post` type if it exists
   const questionMetadata = question?.metadata as V2PublicationMetadata | undefined;
-  const questionTitle = questionMetadata?.title || questionMetadata?.content?.substring(0, 70) + (questionMetadata?.content && questionMetadata.content.length > 70 ? "..." : "") || "Question Details";
+  // const questionTitle = questionMetadata?.title || questionMetadata?.content?.substring(0, 70) + (questionMetadata?.content && questionMetadata.content.length > 70 ? "..." : "") || "Question Details";
+  const { title: questionTitle } = JSON.parse(questionMetadata?.content!);
+
+  const { body: questionBody } = JSON.parse(questionMetadata?.content!);
+
 
   return (
     <main className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -219,7 +223,9 @@ const QuestionDetail: NextPage = () => {
             </span>
 
           </div>
-          {renderV2Content(questionMetadata)}
+          {/* {renderV2Content(questionMetadata)} */
+          questionBody
+          }
         </article>
       )}
 
