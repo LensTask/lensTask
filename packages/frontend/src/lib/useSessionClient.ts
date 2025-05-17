@@ -172,9 +172,12 @@ const useSessionClient = () => {
         setFeedback(`Profile creation sucessfull`);
         return accountData
       });
-    if (!result) {
+    if(result.isErr()){
       error('Error creating profile:', result.error);
       setFeedback(`Profile creation failed: ${result.error.message}`);
+    }
+    if (!result) {
+      setFeedback('Error creating profile');
     }
     return result;
   };
@@ -217,9 +220,6 @@ const useSessionClient = () => {
       setSessionClient(newClient);
       log('Login/onboarding succeeded, session client set.');
 
-      if (!activeLensProfile) {
-        log('No active profile after login, awaiting profile creation.');
-      }
     } catch (err: any) {
       error('Unexpected error during login/onboarding:', err.message);
       setFeedback(`❌ Unexpected error: ${err.message}`);

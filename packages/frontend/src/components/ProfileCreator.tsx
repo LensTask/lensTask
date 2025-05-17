@@ -44,7 +44,7 @@ export default function ProfileCreator() {
     return (
       <div className="my-4 p-4 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-center animate-pulse">
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          {isConnecting ? 'Connecting to wallet...' : 'Checking Lens status... (Check wallet for signatures request)'}
+          {isConnecting ? 'Connecting to wallet...' : 'Checking Lens status...'}
         </p>
       </div>
     );
@@ -204,7 +204,9 @@ export default function ProfileCreator() {
                   state.stateSessionClient,
                   usernameSignUp
                 );
-                actions.setStateActiveLensProfile(profile);
+                if(profile.username){
+                  actions.setStateActiveLensProfile(profile);
+                }
               }}
               disabled={isLoadingAction || !isConnected}
               className="w-full inline-flex justify-center items-center px-6 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 disabled:bg-slate-400 dark:disabled:bg-slate-500 disabled:text-slate-700 dark:disabled:text-slate-400 disabled:cursor-not-allowed transition-colors duration-150"
