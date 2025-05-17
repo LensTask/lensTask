@@ -3,7 +3,7 @@
 import { NextPage } from "next";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 import { useContractRead, useAccount, useWalletClient } from 'wagmi';
 import { getPostActionAddress } from '../../lib/utils';
@@ -53,7 +53,7 @@ const QuestionDetail: NextPage = () => {
   const { data: walletClient } = useWalletClient();
   const { handleAssignResponseWinner } = useSessionClient();
 
-  // ── STATE ───────────────────────────────────────────────────────────────
+  // ── State
   const [question, setQuestion] = useState<Post | null>(null);
   const [answers, setAnswers] = useState<AnyPublication[]>([]);
   const [pendingAnswers, setPendingAnswers] = useState<AnyPublication[]>([]);
@@ -62,10 +62,10 @@ const QuestionDetail: NextPage = () => {
   const [error, setError] = useState<FetchError | null>(null);
   const [executedCount, setExecutedCount] = useState(0);
 
-  // ← NEW: bump this to re-trigger data loads
+  // ← bump this to trigger refetch on accept or new answer
   const [refreshCounter, setRefreshCounter] = useState(0);
 
-  // ── HELPERS ─────────────────────────────────────────────────────────────
+  // ── Fetch + sort + dedupe pending
   async function fetchAnswers(qId: string) {
     setIsLoadingAnswers(true);
     const res = await fetchPostReferences(client, {
@@ -76,17 +76,27 @@ const QuestionDetail: NextPage = () => {
       setError({ message: res.error.message, type: 'answers' });
       setAnswers([]);
     } else {
-      const server = res.value.items
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      const seen = new Set(server.map(a => a.id));
-      setPendingAnswers(p => p.filter(x => !seen.has(x.id)));
+      // sort newest-first
+      const server = res.value.items.sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+
+      // build a set of "author|content" strings from the real data
+      const realKeys = new Set(
+        server.map(a => `${a.author.owner}|${a.metadata.content || ""}`)
+      );
+
+      // remove any pendingAnswers whose author+content now appears in the server list
+      setPendingAnswers(p =>
+        p.filter(pa => !realKeys.has(`${pa.author.owner}|${pa.metadata.content || ""}`))
+      );
+
       setAnswers(server);
     }
     setIsLoadingAnswers(false);
   }
 
-  // ── EFFECTS ─────────────────────────────────────────────────────────────
-  // 1️⃣ Load question + answers when pubIdQ or refreshCounter changes
+  // ── Effects
   useEffect(() => {
     const idStr = Array.isArray(pubIdQ) ? pubIdQ[0] : pubIdQ;
     if (!idStr) {
@@ -112,7 +122,6 @@ const QuestionDetail: NextPage = () => {
     })();
   }, [pubIdQ, refreshCounter]);
 
-  // 2️⃣ Executor count
   useEffect(() => {
     if (!question?.id) return;
     (async () => {
@@ -123,7 +132,7 @@ const QuestionDetail: NextPage = () => {
     })();
   }, [question, refreshCounter]);
 
-  // 3️⃣ On-chain winner
+  // ── On‐chain winner
   const minimalAbi = [{
     inputs: [
       { internalType: 'address', name: 'feed', type: 'address' },
@@ -159,16 +168,24 @@ const QuestionDetail: NextPage = () => {
   const hasWinner = executedCount > 0
     || (winnerAddress && winnerAddress !== "0x0000000000000000000000000000000000000000");
 
-  // Wait for walletClient if connected
   const walletReady = !isConnected || Boolean(walletClient);
 
-  // ── LOADING GATE ─────────────────────────────────────────────────────────
-  const isPageLoading = isLoadingQuestion || isLoadingAnswers || winnerLoading || !walletReady;
-  if (isPageLoading) {
+  // ── Merge pending + server, dedupe by id
+  const mergedAnswers = useMemo(() => {
+    const seen = new Set<string>();
+    return [...pendingAnswers, ...answers].filter(ans => {
+      if (seen.has(ans.id)) return false;
+      seen.add(ans.id);
+      return true;
+    });
+  }, [pendingAnswers, answers]);
+
+  // ── Loading Gate
+  if (isLoadingQuestion || isLoadingAnswers || winnerLoading || !walletReady) {
     return <QuestionDetailSkeleton />;
   }
 
-  // ── ERROR STATES ─────────────────────────────────────────────────────────
+  // ── Error UI
   if (error?.type === 'question') {
     return (
       <main className="max-w-3xl mx-auto p-4">
@@ -202,12 +219,11 @@ const QuestionDetail: NextPage = () => {
     );
   }
 
-  // ── FINAL RENDER ─────────────────────────────────────────────────────────
+  // ── Final Render
   const meta = question.metadata as V2PublicationMetadata;
   const parsed = JSON.parse(meta.content || '{}');
   const title = parsed.title || 'Question Details';
   const body = parsed.body || '';
-  const displayAnswers = [...pendingAnswers, ...answers];
 
   return (
     <main className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -229,11 +245,11 @@ const QuestionDetail: NextPage = () => {
       <hr className="my-8 border-gray-200 dark:border-gray-700" />
 
       <h2 className="text-xl font-semibold mb-4 dark:text-gray-200">
-        Answers ({displayAnswers.length})
+        Answers ({mergedAnswers.length})
       </h2>
 
       <section className="space-y-6">
-        {displayAnswers.map(answer => {
+        {mergedAnswers.map(answer => {
           const m = answer.metadata as V2PublicationMetadata;
           const aid = answer.author.owner.toLowerCase();
           const isWinner = winnerAddress === aid;
@@ -259,7 +275,7 @@ const QuestionDetail: NextPage = () => {
 
               {isWinner && (
                 <span className="inline-block mt-2 px-2 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded">
-                  ACCEPTED ANSWER 🎉
+                  Accepted Answer 🎉
                 </span>
               )}
 
@@ -270,7 +286,6 @@ const QuestionDetail: NextPage = () => {
                     feedAddress={answer.feed.address}
                     winnerAddress={answer.author.owner}
                     onSuccess={() => {
-                      // bump refreshCounter to reload everything
                       setRefreshCounter(x => x + 1);
                       refetchWinner();
                     }}
@@ -300,7 +315,6 @@ const QuestionDetail: NextPage = () => {
               timestamp: new Date().toISOString(),
             };
             setPendingAnswers(p => [fake, ...p]);
-            // re-fetch real answers + on-chain winner
             setRefreshCounter(x => x + 1);
             refetchWinner();
           }}

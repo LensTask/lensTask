@@ -49,7 +49,7 @@ export default function AnswerComposer({
 
     const submittedText = text;       // capture before clearing
     if (simulatedSuccess && txOrId) {
-      setUiSuccess(`✅ Post submitted! (ID/Tx: ${txOrId.substring(0,12)}...)`);
+      setUiSuccess(`✅ Post submitted! (ID/Tx: ${txOrId.substring(0, 12)}...)`);
       setText("");
       // invoke parent callback with id, content, and your handle
       onSuccess?.(txOrId, submittedText, activeProfile.username?.localName || "");
@@ -99,10 +99,48 @@ export default function AnswerComposer({
 
       <button
         onClick={submitAnswer}
-        className="mt-4 px-6 py-2 bg-kintask-blue text-white rounded-md disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-kintask-blue transition-opacity"
         disabled={isSubmitting || !text.trim()}
+        className="
+    w-full sm:w-auto
+    inline-flex justify-center items-center
+    px-6 py-3
+    border border-transparent
+    text-base font-medium rounded-md shadow-sm
+    text-white bg-sky-600 hover:bg-sky-700
+    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500
+    disabled:bg-slate-400 dark:disabled:bg-slate-500
+    disabled:text-slate-700 dark:disabled:text-slate-400
+    disabled:cursor-not-allowed
+    transition-colors duration-150
+  "
       >
-        {isSubmitting ? "Submitting Answer..." : "Post Answer"}
+        {isSubmitting ? (
+          <>
+            <svg
+              className="animate-spin -ml-2 mr-3 h-5 w-5 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+              />
+            </svg>
+            Submitting…
+          </>
+        ) : (
+          "Post Answer"
+        )}
       </button>
     </div>
   );
