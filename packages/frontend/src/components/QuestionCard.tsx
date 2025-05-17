@@ -89,12 +89,12 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
   let contentSnippet = metadata?.content || "No content preview available."; // Default to content
 
 
-  let questionTitle="test";
+  let questionTitle = "test";
   try {
     questionTitle = JSON.parse(metadata?.content!).title;
   }
-  catch{
-    questionTitle= "test";
+  catch {
+    questionTitle = "test";
   }
 
   // More robust metadata handling based on __typename
@@ -108,7 +108,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
       case 'TextOnlyMetadataV3':
       case 'TextOnlyMetadata':
         // For TextOnly, content is the main field.
-        title = questionTitle=="test" ? (metadata.content.substring(0, 70) + (metadata.content.length > 70 ? "..." : "")) :questionTitle;
+        title = questionTitle == "test" ? (metadata.content.substring(0, 70) + (metadata.content.length > 70 ? "..." : "")) : questionTitle;
         // contentSnippet = metadata.content || "No content available.";
         break;
       // Add cases for other metadata types you expect (Image, Video, etc.)
@@ -158,7 +158,13 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
               <a className="font-medium hover:underline">{displayHandle}</a>
             </Link>
             {' on '}
-            {new Date(pub.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+            {new Date(pub.timestamp).toLocaleString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
           </p>
         </div>
       </div>

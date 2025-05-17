@@ -19,13 +19,18 @@ import {
   fetchPostReferences // For fetching comments (answers)
 } from "@lens-protocol/client/actions";
 import { client } from "../../lib/client"; // Adjust path
-import { postId, PostReferenceType } from "@lens-protocol/client"; // Helper to create typed PublicationId for posts
+import { postId, PostReferenceType, WhoExecutedActionOnPostQuery } from "@lens-protocol/client"; // Helper to create typed PublicationId for posts
+// import { fetchWhoExecutedActionOnPost } from "@lens-protocol/client/queries";
 
 import useSessionClient from "../../lib/useSessionClient";
 import AnswerComposer from "@/components/AnswerComposer";
 import AcceptAnswerButton from "@/components/AcceptAnswerButton";
 import QuestionDetailSkeleton from "@/components/QuestionDetailSkeleton";
 import { InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
+
+
+import { useAccount, useSignMessage, useWalletClient } from 'wagmi';
+
 
 // Define a type for error state
 interface FetchError {
@@ -58,6 +63,11 @@ const renderV2Content = (metadata: V2PublicationMetadata | null | undefined): JS
 
 
 const QuestionDetail: NextPage = () => {
+  const { data: walletClient } = useWalletClient();
+
+
+  const [executedCount, setExecutedCount] = useState<number>(0)
+
   const router = useRouter();
   const { id: publicationIdFromQuery } = router.query;
   const { handleAssignResponseWinner } = useSessionClient();
@@ -146,6 +156,51 @@ const QuestionDetail: NextPage = () => {
     loadQuestionAndAnswers();
 
   }, [publicationIdFromQuery]); // Re-run if ID changes
+  useEffect(() => {
+    if (!question?.id) {
+      console.log('[Executors] no question ID, skipping fetch')
+      return
+    }
+  
+    console.log('[Executors] fetching for post:', question.id)
+  
+    async function loadExecutors() {
+      try {
+        const res = await client.query(WhoExecutedActionOnPostQuery, {
+          request: {
+            post: postId(question.id),
+            reference: PostReferenceType.Post,
+          },
+        })
+  
+        // 1️⃣ check for error
+        if (res.isErr()) {
+          console.error('[Executors] GraphQL error:', res.error)
+          setExecutedCount(0)
+          return
+        }
+  
+        // 2️⃣ unwrap the Ok result
+        const data = res.value
+        console.log('[Executors] unwrapped value:', data)
+  
+        // 3️⃣ grab items & pageInfo
+        const items = data.items    // <— this is your PostExecutedActions[]
+        console.log('[Executors] items:', items)
+  
+        const count = items.length
+        console.log('[Executors] count →', count)
+        setExecutedCount(count)
+      } catch (e) {
+        console.error('[Executors] fetch error:', e)
+        setExecutedCount(0)
+      }
+    }
+  
+    loadExecutors()
+  }, [question?.id, client])
+  
+  
 
   // --- Render Logic ---
   if (isLoadingQuestion && !question && !error) {
@@ -224,7 +279,7 @@ const QuestionDetail: NextPage = () => {
 
           </div>
           {/* {renderV2Content(questionMetadata)} */
-          questionBody
+            questionBody
           }
         </article>
       )}
@@ -250,6 +305,19 @@ const QuestionDetail: NextPage = () => {
 
         {answers.map((answer) => { // `answer` is of type `AnyPublication`, likely a `Comment`
           const answerMeta = answer.metadata;
+
+
+          console.log(question);
+
+          // console.log(walletClient);
+          // const canAccept = true;
+          const canAccept =
+            !!question &&
+            !!walletClient &&
+            question.author.owner.toLowerCase() === walletClient.account.address.toLowerCase() &&
+            executedCount === 0
+
+
           return (
             <div key={answer.id} className="border dark:border-gray-700 p-4 rounded-lg bg-white dark:bg-gray-800 shadow-md">
               <div className="mb-2">
@@ -261,7 +329,7 @@ const QuestionDetail: NextPage = () => {
                 {new Date(answer.createdAt).toLocaleDateString()}
               </p>
 
-              {question && (
+              {canAccept && (
                 <div className="mt-3 pt-3 border-t dark:border-gray-600">
                   <AcceptAnswerButton
 
