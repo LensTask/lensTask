@@ -7,7 +7,9 @@ import {
   createAccountWithUsername,
   currentSession,
   fetchPostReferences,
-  executePostAction
+  executePostAction,
+  fetchPost,
+  editPost
 } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { blockchainData, evmAddress, postId, uri, PostReferenceType } from "@lens-protocol/client";
@@ -15,7 +17,7 @@ import { never } from "@lens-protocol/client";
 import { storageClient } from "./storage-client";
 import { client } from "./client";
 import { useAccount, useSignMessage, useWalletClient } from 'wagmi';
-import { account as makeMetadata } from "@lens-protocol/metadata";
+import { account as makeMetadata, MetadataAttributeType } from "@lens-protocol/metadata";
 import { textOnly } from "@lens-protocol/metadata";
 import { getNftAddress, getPostActionAddress } from './utils';
 import { AbiCoder, keccak256, toUtf8Bytes } from "ethers";
@@ -233,13 +235,12 @@ const useSessionClient = () => {
     sessionClient,
     activeLensProfile,
     feedAddress: string,
-    questionId: string,      // was `postId` before
+    questionId: string,
     winnerAddress: string
   ) => {
     setFeedback(null);
     console.log('[useSessionClient] handleAssignResponseWinner triggered.');
 
-    if (!sessionClient) return;
     if (!isConnected || !activeLensProfile) {
       const msg = '⚠️ Please log in with an active Lens Profile first.';
       setFeedback(msg);
@@ -253,38 +254,9 @@ const useSessionClient = () => {
     console.log('[useSessionClient] questionId:', questionId);
     console.log('[useSessionClient] winnerAddress:', winnerAddress);
 
-    const metadata = textOnly({
-      content: "content",
-      tags: ["question", "lens-task-test-v2"],
-    });
-
-    // — build the single key/value param your Solidity expects —
     const coder = AbiCoder.defaultAbiCoder();
-    const keyHash = keccak256(toUtf8Bytes('winner'));            // keccak("winner")
-    // const key     = blockchainData(keyHash);
-    const data = blockchainData(coder.encode(['address'], [winnerAddress]));
 
     try {
-      // const result = await executePostAction(sessionClient, {
-      //   post: postId(questionId),      // now calls the helper, not your param
-      //   action: {
-      //     unknown: {
-      //       address: evmAddress(getPostActionAddress(chainId)),
-      //       params: [
-      //         {
-      //           raw: {
-      //             // 32 bytes key (e.g., keccak(name))
-      //             key: blockchainData(keccak256(toUtf8Bytes('winner')),
-      //             // an ABI encoded value
-      //             value: blockchainData(coder.encode(['address'], [winnerAddress])),
-      //           },
-      //         },
-      //       ],
-      //     },
-      //   },
-      // });
-
-
       const postExecuteAction = {
         post: postId(questionId.toString()),  
         action: {
@@ -303,9 +275,6 @@ const useSessionClient = () => {
         },
       };
       
-      // (If you need to upload metadata first, do that before executing the action)
-      const { uri: uriResult } = await storageClient.uploadAsJson(metadata);
-      
       const result = await executePostAction(sessionClient, postExecuteAction)
       .andThen(handleOperationWith(walletClient));
 
@@ -313,10 +282,40 @@ const useSessionClient = () => {
       if (result.isErr()) {
         console.error(result.error);
         setFeedback(`❌ Error assigning bounty: ${result.error.message}`);
-      } else {
-        console.log('✅ Bounty winner assigned:', result.value);
-        setFeedback('✅ Bounty winner assigned!');
+        return;
       }
+
+      const postResult = await fetchPost(client, { post: postId(questionId) });
+
+      if (postResult.isErr() || postResult.value === null) {
+        if (postResult.isErr()) {
+          console.error(postResult.error);
+          setFeedback(`❌ Error getting question meta data: ${postResult.error.message}`);
+        } else {
+          setFeedback(`❌ Error getting question meta data: Question post not found!`);
+        }
+        return;
+      }
+
+      const postMeta = postResult.value.metadata;
+      postMeta.attributes.push({ key: 'winner', value: winnerAddress, type: MetadataAttributeType.STRING });
+      console.log('uploading new meta data', postMeta);
+      const { uri: uriResult } = await storageClient.uploadAsJson(postMeta);
+      console.log('uploaded new meta data', uriResult);
+
+      const editResult = await editPost(sessionClient, {
+        contentUri: uri(uriResult),
+        post: postId(questionId)
+      }).andThen(handleOperationWith(walletClient));
+
+      if (editResult.isErr()) {
+        console.error(editResult.error);
+        setFeedback(`❌ Error editing question meta data: ${editResult.error.message}`);
+        return;
+      }
+
+      console.log('✅ Bounty winner assigned:', result.value);
+      setFeedback('✅ Bounty winner assigned!');
     } catch (err: any) {
       console.error(err);
       setFeedback(`❌ Unexpected error: ${err.message || err}`);
