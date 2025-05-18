@@ -148,7 +148,7 @@ const ProfilePage: NextPage = () => {
       <main className="max-w-3xl mx-auto p-4 text-center">
         <Link href="/" legacyBehavior>
           <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
-            ← Back to Kintask Home
+            ← Back to LensTask Home
           </a>
         </Link>
         <div className="bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-6 rounded-md shadow-lg mt-10" role="alert">
@@ -173,7 +173,7 @@ const ProfilePage: NextPage = () => {
       <main className="max-w-3xl mx-auto p-4 text-center">
         <Link href="/" legacyBehavior>
           <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
-            ← Back to Kintask Home
+            ← Back to LensTask Home
           </a>
         </Link>
         <div className="bg-sky-100 dark:bg-sky-900/50 border-l-4 border-sky-500 text-sky-700 dark:text-sky-300 p-6 rounded-md shadow-lg mt-10" role="alert">
@@ -194,7 +194,7 @@ const ProfilePage: NextPage = () => {
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
       <Link href="/" legacyBehavior>
         <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm">
-          ← Back to Kintask Home
+          ← Back to LensTask Home
         </a>
       </Link>
 
