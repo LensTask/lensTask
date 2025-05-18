@@ -12,8 +12,8 @@ import styles from './Navbar.module.css';
 
 const menuItems = [
   { label: 'Home', href: '/' },
-  { label: 'Ask', href: '/ask' },
-  { label: 'My Questions', href: '/questions' },
+  { label: 'Create Task', href: '/ask' },
+  { label: 'My Tasks', href: '/questions' },
 ];
 
 export default function Navbar() {

@@ -56,75 +56,77 @@ export default function ProfileCreator() {
       <div className="my-4 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 rounded-lg text-center">
         <p className="text-sm text-amber-700 dark:text-amber-200 mb-3">
           Please connect your wallet to interact with Lens Protocol.
-      </p>
+        </p>
         <ConnectKitButton />
       </div>
     );
   }
 
-  // Active Lens Profile detected
-  if (state.stateActiveLensProfile) {
-    const displayHandle = state.stateActiveLensProfile.username?.localName;
-    return (
-      <>
-        <div className="my-4 p-4 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-600 rounded-lg text-center">
-          <p className="text-sm text-green-700 dark:text-green-200">
-            Welcome! Interacting as: <br />
-            <strong className="font-medium">@{displayHandle}</strong>
-          </p>
-        </div>
-        {/* Debug Panel */}
-        {/* <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 border rounded text-xs">
-          <h4 className="font-semibold mb-2">Debug Panel</h4>
-          <pre className="overflow-auto bg-black bg-opacity-10 p-2 rounded">
-            {JSON.stringify(
-              {
-                isConnected,
-                isConnecting,
-                isLoadingSession: state.isLoadingSession,
-                sessionClientSet: !!state.stateSessionClient,
-                profileSet: !!state.stateActiveLensProfile,
-              },
-              null,
-              2
-            )}
-          </pre>
-        </div> */}
-        {/* Assign Bounty Winner */}
-        {/* <div className="mt-4 p-4 border-t dark:border-slate-700">
-          <h5 className="text-lg font-semibold mb-2">Assign Bounty Winner</h5>
-          <input
-            type="text"
-            placeholder="Feed address"
-            value={testFeed}
-            onChange={(e) => setTestFeed(e.target.value)}
-            className="mb-2 block w-full px-3 py-2 border rounded bg-white dark:bg-slate-700"
-          />
-          <input
-            type="number"
-            placeholder="Post ID"
-            value={testPostId}
-            onChange={(e) => setTestPostId(e.target.value)}
-            className="mb-2 block w-full px-3 py-2 border rounded bg-white dark:bg-slate-700"
-          />
-          <input
-            type="text"
-            placeholder="Winner address"
-            value={testWinner}
-            onChange={(e) => setTestWinner(e.target.value)}
-            className="mb-4 block w-full px-3 py-2 border rounded bg-white dark:bg-slate-700"
-          />
-          <button
-            onClick={() => handleAssignResponseWinner(testFeed, Number(testPostId), testWinner)}
-            disabled={!testFeed || !testPostId || !testWinner}
-            className="w-full inline-flex justify-center rounded bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 disabled:opacity-50"
-          >
-            Assign Bounty
-          </button>
-        </div> */}
-      </>
-    );
-  }
+  // // Active Lens Profile detected
+  // if (state.stateActiveLensProfile) {
+  //   const displayHandle = state.stateActiveLensProfile.username?.localName;
+  //   return (
+  //     <>
+  //       <strong className="font-medium">Explore Latest LensTasks</strong>
+
+  //       {/* <div className="my-4 p-4 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-600 rounded-lg text-center">
+  //         <p className="text-sm text-green-700 dark:text-green-200">
+  //           Welcome! Interacting as: <br />
+  //           <strong className="font-medium">@{displayHandle}</strong>
+  //         </p>
+  //       </div> */}
+  //       {/* Debug Panel */}
+  //       {/* <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 border rounded text-xs">
+  //         <h4 className="font-semibold mb-2">Debug Panel</h4>
+  //         <pre className="overflow-auto bg-black bg-opacity-10 p-2 rounded">
+  //           {JSON.stringify(
+  //             {
+  //               isConnected,
+  //               isConnecting,
+  //               isLoadingSession: state.isLoadingSession,
+  //               sessionClientSet: !!state.stateSessionClient,
+  //               profileSet: !!state.stateActiveLensProfile,
+  //             },
+  //             null,
+  //             2
+  //           )}
+  //         </pre>
+  //       </div> */}
+  //       {/* Assign Bounty Winner */}
+  //       {/* <div className="mt-4 p-4 border-t dark:border-slate-700">
+  //         <h5 className="text-lg font-semibold mb-2">Assign Bounty Winner</h5>
+  //         <input
+  //           type="text"
+  //           placeholder="Feed address"
+  //           value={testFeed}
+  //           onChange={(e) => setTestFeed(e.target.value)}
+  //           className="mb-2 block w-full px-3 py-2 border rounded bg-white dark:bg-slate-700"
+  //         />
+  //         <input
+  //           type="number"
+  //           placeholder="Post ID"
+  //           value={testPostId}
+  //           onChange={(e) => setTestPostId(e.target.value)}
+  //           className="mb-2 block w-full px-3 py-2 border rounded bg-white dark:bg-slate-700"
+  //         />
+  //         <input
+  //           type="text"
+  //           placeholder="Winner address"
+  //           value={testWinner}
+  //           onChange={(e) => setTestWinner(e.target.value)}
+  //           className="mb-4 block w-full px-3 py-2 border rounded bg-white dark:bg-slate-700"
+  //         />
+  //         <button
+  //           onClick={() => handleAssignResponseWinner(testFeed, Number(testPostId), testWinner)}
+  //           disabled={!testFeed || !testPostId || !testWinner}
+  //           className="w-full inline-flex justify-center rounded bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 disabled:opacity-50"
+  //         >
+  //           Assign Bounty
+  //         </button>
+  //       </div> */}
+  //     </>
+  //   );
+  // }
 
   // Modal for users without a Lens profile
   return showSignUpForm ? (
@@ -187,11 +189,10 @@ export default function ProfileCreator() {
           {/* Feedback */}
           {feedback && !(feedback.startsWith('ℹ️') || feedback.startsWith('Processing') || feedback.startsWith('Checking')) && (
             <p
-              className={`text-sm p-2 rounded-md ${
-                feedback.startsWith('✅')
+              className={`text-sm p-2 rounded-md ${feedback.startsWith('✅')
                   ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
                   : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-              }`}
+                }`}
             >
               {feedback}
             </p>
@@ -204,7 +205,7 @@ export default function ProfileCreator() {
                   state.stateSessionClient,
                   usernameSignUp
                 );
-                if(profile?.username){
+                if (profile?.username) {
                   actions.setStateActiveLensProfile(profile);
                 }
               }}

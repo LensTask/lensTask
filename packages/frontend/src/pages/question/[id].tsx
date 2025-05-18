@@ -229,7 +229,7 @@ const QuestionDetail: NextPage = () => {
     <main className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
       <Link href="/" legacyBehavior>
         <a className="inline-block mb-6 text-kintask-blue hover:text-blue-700 dark:hover:text-blue-400 text-sm">
-          ← Back to All Questions
+          ← Back to All Tasks
         </a>
       </Link>
 

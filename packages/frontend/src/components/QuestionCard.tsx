@@ -192,7 +192,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
         </div>
         <Link href={questionDetailUrl} legacyBehavior>
           <a className="text-kintask-blue dark:text-sky-400 hover:underline font-medium text-xs sm:text-sm">
-            View Question & Answers
+            View Task & Answers
           </a>
         </Link>
       </div>

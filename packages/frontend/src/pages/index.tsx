@@ -95,10 +95,10 @@ const Home: NextPage = () => {
         <div className="flex justify-between items-center mb-8">
           <div className="text-center flex-grow">
             <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white sm:text-5xl tracking-tight">
-              Latest LensTask Questions
+              Latest LensTasks
             </h1>
             <p className="mt-3 text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
-              Explore verifiable Q&A from the community.
+              Explore Tasks and Answers from community.
             </p>
           </div>
           {/* ACTION: Update this link to your page for asking LensTask questions */}
@@ -110,22 +110,22 @@ const Home: NextPage = () => {
         </div>
 
         {/* Profile Creator Section */}
-        <div className="my-8 p-6 bg-white dark:bg-slate-800 shadow-xl rounded-lg">
+        {/* <div className="my-8 p-6 bg-white dark:bg-slate-800 shadow-xl rounded-lg"> */}
           {/* <h2 className="text-xl font-semibold mb-4 text-center text-gray-700 dark:text-gray-300">Manage Your Lens Profile</h2> */}
           <ProfileCreator />
-        </div>
+        {/* </div> */}
         {/* End Profile Creator Section */}
 
-        <div className="my-8 p-6 bg-white dark:bg-slate-800 shadow-xl rounded-lg">
-          <h2 className="text-xl font-semibold mb-4 text-center text-gray-700 dark:text-gray-300">Questions</h2>
+        {/* <div className="my-8 p-6 bg-white dark:bg-slate-800 shadow-xl rounded-lg"> */}
+          {/* <h2 className="text-xl font-semibold mb-4 text-center text-gray-700 dark:text-gray-300">All Lens</h2> */}
            {/* Ensure this adds the correct tags/appId for LensTask questions if used for that */}
-        </div>
+        {/* </div> */}
 
         {/* Conditional Rendering based on state */}
         <div className="mt-10">
           {isLoading && publications.length === 0 && ( // Show skeletons only during initial load
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-4">Loading Questions...</h3>
+              <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-4">Loading Tasks...</h3>
               {[...Array(3)].map((_, i) => ( // Display a few skeletons
                 <QuestionCardSkeleton key={`skeleton-${i}`} />
               ))}

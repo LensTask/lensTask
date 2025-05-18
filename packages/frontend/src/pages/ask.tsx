@@ -90,17 +90,17 @@ export default function AskPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 sm:py-12">
       <section className="max-w-2xl mx-auto bg-white dark:bg-slate-800 shadow-xl rounded-lg p-6 sm:p-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white mb-6 text-center">
-          Ask a Public Question
+          Create your LensTask
         </h1>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 text-center">
-          Your question will be posted onchain. Be clear and concise.
+          Your task will be posted onchain.
           {/* TODO: Add link to guidelines or more info here */}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Question Title
+              Task Title
             </label>
             <input
               type="text"
@@ -120,7 +120,7 @@ export default function AskPage() {
 
           <div>
             <label htmlFor="body" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Your Question
+              Task description
             </label>
             <textarea
               id="body"
@@ -196,7 +196,7 @@ export default function AskPage() {
                   Submitting...
                 </>
               ) : (
-                "Submit Question"
+                "Submit Task"
               )}
             </button>
           </div>
@@ -210,8 +210,8 @@ export default function AskPage() {
               <ul className="list-disc list-inside text-xs text-slate-600 dark:text-slate-400 mt-1 space-y-1">
                 <li>Clearly articulate your problem or question.</li>
                 <li>Provide context or examples if applicable.</li>
-                <li>Check if a similar question has already been asked.</li>
-                <li>Your post is permanent on the blockchain.</li>
+                {/* <li>Check if a similar question has already been asked.</li> */}
+                {/* <li>Your post is permanent on the blockchain.</li> */}
               </ul>
             </div>
           </div>

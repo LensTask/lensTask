@@ -11,7 +11,7 @@ import QuestionCardSkeleton from "@/components/QuestionCardSkeleton";
 import { InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 import { evmAddress } from "@lens-protocol/client";
 import { useAppContext } from '../context/useAppState';
-import useSessionClient  from '../lib/useSessionClient';
+import useSessionClient from '../lib/useSessionClient';
 
 // Define a generic type for publications if not using specific Lens types
 // This allows flexibility if the exact Lens SDK version types are not strictly enforced here.
@@ -41,7 +41,7 @@ const MyQuestions: NextPage = () => {
       console.log("[IndexPage] useEffect: Fetching initial posts...");
       setIsLoading(true); // Set loading before the async call
       setError(null);     // Clear any previous errors
-      if(!state.stateActiveLensProfile){
+      if (!state.stateActiveLensProfile) {
         setIsLoading(false);
         setPublications([]); // Ensure publications is empty on error
 
@@ -57,7 +57,7 @@ const MyQuestions: NextPage = () => {
           filter: {
             metadata: {
               tags: {
-               all: ["lens-task-test-v2","question"] // Or use 'all'
+                all: ["lens-task-test-v2", "question"] // Or use 'all'
               }
             },
             authors: [evmAddress(state.stateActiveLensProfile.address)],
@@ -86,7 +86,7 @@ const MyQuestions: NextPage = () => {
       }
     };
     checkCurrentLensSession().then(() => {
-        loadPosts(); // Call the async function
+      loadPosts(); // Call the async function
     })
   }, []); // Empty dependency array means this runs once when the component mounts
 
@@ -103,7 +103,7 @@ const MyQuestions: NextPage = () => {
         <div className="flex justify-between items-center mb-8">
           <div className="text-center flex-grow">
             <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white sm:text-5xl tracking-tight">
-              My Questions
+              Your Tasks
             </h1>
             <p className="mt-3 text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
               Explore questions done by you.
@@ -111,10 +111,20 @@ const MyQuestions: NextPage = () => {
           </div>
           {/* ACTION: Update this link to your page for asking LensTask questions */}
           <Link href="/ask" legacyBehavior>
-            <a className="ml-4 flex-shrink-0 btn btn-primary bg-LensTask-blue hover:bg-LensTask-blue-dark text-white px-4 py-2 rounded-md shadow-sm font-semibold">
+            <a
+              className="
+      ml-4 flex-shrink-0 inline-flex justify-center items-center
+      px-4 py-2 border border-transparent
+      text-base font-medium rounded-md shadow-sm
+      text-white bg-sky-600 hover:bg-sky-700
+      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500
+      transition-colors duration-150
+    "
+            >
               Ask LensTask
             </a>
           </Link>
+
         </div>
         {/* Conditional Rendering based on state */}
         <div className="mt-10">
