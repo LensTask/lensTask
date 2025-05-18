@@ -7,54 +7,73 @@ import { usePathname } from 'next/navigation';
 import { useAccount, useDisconnect, useEnsName, useEnsAvatar } from 'wagmi';
 import { ConnectKitButton } from 'connectkit';
 import useSessionClient from '../lib/useSessionClient';
+import { useAppContext } from '../context/useAppState';
 import styles from './Navbar.module.css';
 
 const menuItems = [
   { label: 'Home', href: '/' },
   { label: 'Ask', href: '/ask' },
   { label: 'My Questions', href: '/questions' },
-
 ];
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [lensAvatar, setLensAvatar] = useState<string>();
+
+  const { state } = useAppContext();
   const pathname = usePathname();
 
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { data: ensName } = useEnsName({ address, chainId: 1 });
-  const { data: ensAvatar } = useEnsAvatar({ name: ensName!, chainId: 1 });
+  const { data: ensAvatar } = useEnsAvatar({
+    name: ensName!,
+    chainId: 1,
+    enabled: Boolean(ensName),
+  });
 
+  // const { activeLensProfile } = useSessionClient();
+
+  console.log("state",state);
+
+  let displayHandle = "lensprofile";
+  displayHandle = state.stateActiveLensProfile?.username?.localName;
+
+  
   const {
     activeLensProfile,
     isCheckingLensSession,
   } = useSessionClient();
 
-  // Fetch Lens profile avatar from metadata
+  console.log("displayHandle", displayHandle)
+
+
+  const [lensAvatar, setLensAvatar] = useState<string>();
+
+  // avoid SSR/client mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // pull in Lens avatar once we know the profile URI
   useEffect(() => {
     if (activeLensProfile?.metadataUri) {
       fetch(activeLensProfile.metadataUri)
-        .then(res => res.json())
-        .then(json => {
+        .then((res) => res.json())
+        .then((json) => {
           if (json.avatar) setLensAvatar(json.avatar);
         })
         .catch(console.error);
     }
   }, [activeLensProfile]);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const toggleMenu = () => setIsOpen(!isOpen);
+  const toggleMenu = () => setIsOpen((o) => !o);
   const handleDisconnect = () => {
     disconnect();
     setIsOpen(false);
   };
 
-  // Minimal SSR placeholder
+  // SSR placeholder
   if (!isMounted) {
     return (
       <nav className={styles.navbar}>
@@ -62,7 +81,7 @@ export default function Navbar() {
           <Link href="/">LensTask</Link>
         </div>
         <ul className={`${styles.menuLinks} ${styles.menuLinksMinimal}`}>
-          {menuItems.map(item => (
+          {menuItems.map((item) => (
             <li key={item.href} className={styles.menuItem}>
               <Link href={item.href} className={styles.navLink}>
                 {item.label}
@@ -93,14 +112,48 @@ export default function Navbar() {
         aria-label="Toggle menu"
       >
         {isOpen ? (
-          <svg /* X icon */>…</svg>
+          // X / close icon
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M18 6L6 18"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            <path
+              d="M6 6L18 18"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
         ) : (
-          <svg /* hamburger icon */>…</svg>
+          // Hamburger icon
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M3 7h18"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            <path
+              d="M3 12h18"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            <path
+              d="M3 17h18"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
         )}
       </button>
 
       <ul className={`${styles.menuLinks} ${isOpen ? styles.open : ''}`}>
-        {menuItems.map(item => (
+        {menuItems.map((item) => (
           <li
             key={item.href}
             className={styles.menuItem}
@@ -123,31 +176,35 @@ export default function Navbar() {
 
           {isConnected && (
             <div className={styles.profileDisplayDesktopOnly}>
-              {/* ENS Avatar or Lens Avatar (prefer Lens) */}
+              {/* Prefer Lens avatar, fall back to ENS */}
               {(lensAvatar || ensAvatar) && (
                 <img
                   src={lensAvatar ?? ensAvatar!}
-                  alt={lensAvatar ? `@${activeLensProfile?.username.localName}` : ensName || 'Avatar'}
+                  alt={
+                    lensAvatar
+                      ? `@${displayHandle}`
+                      : ensName || 'Avatar'
+                  }
                   className={styles.ensAvatarSmall}
                 />
               )}
 
-              {/* Display ENS name or trimmed address */}
-              <span className={styles.addressDisplaySmall}>
-                {ensName ||
+              {/* ENS name or trimmed address */}
+              {/* <span className={styles.addressDisplaySmall}>
+                {ensName ??
                   `${address!.substring(0, 5)}...${address!.substring(
                     address!.length - 3
                   )}`}
-              </span>
+              </span> */}
 
-              {/* Lens handle */}
-              {activeLensProfile && !isCheckingLensSession && (
+              {/* Lens handle link */}
+              {displayHandle && (
                 <Link
-                  href={`/u/${activeLensProfile.username.localName}`}
+                  href={`/u/${displayHandle}`}
                   className={styles.lensProfileLink}
                   onClick={() => setIsOpen(false)}
                 >
-                  @{activeLensProfile.username.localName}
+                  @{displayHandle}
                 </Link>
               )}
 
