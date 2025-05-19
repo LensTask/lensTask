@@ -113,7 +113,7 @@ const ProfilePage: NextPage = () => {
           metadata: {
             // contentWarning: { oneOf: [ContentWarning.Sensitive] },
             // mainContentFocus: [MainContentFocus.Image],
-            tags: { all: ["lens-task-test-v2", "question"] },
+            tags: { all: ["lens-task-test-v3", "question"] },
           },
         },
       });

@@ -57,7 +57,7 @@ const MyQuestions: NextPage = () => {
           filter: {
             metadata: {
               tags: {
-                all: ["lens-task-test-v2", "question"] // Or use 'all'
+                all: ["lens-task-test-v3", "question"] // Or use 'all'
               }
             },
             authors: [evmAddress(state.stateActiveLensProfile.address)],
@@ -155,7 +155,7 @@ const MyQuestions: NextPage = () => {
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <InformationCircleIcon className="h-16 w-16 mx-auto mb-3 opacity-30" />
               <p className="text-lg font-medium">No LensTask Questions Found</p>
-              <p className="text-sm mt-1">Be the first to ask a verifiable question using the "Ask LensTask" button!</p>
+              {/* <p className="text-sm mt-1">Be the first to ask a verifiable question using the "Ask LensTask" button!</p> */}
             </div>
           )}
 

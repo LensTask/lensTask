@@ -382,7 +382,7 @@ const useSessionClient = () => {
     console.log('[SimplePostCreator] Content for post:', content);
     const metadata = textOnly({
       content: content,
-      tags: ["question", "lens-task-test-v2"],
+      tags: ["question", "lens-task-test-v3"],
     });
 
 
@@ -437,7 +437,7 @@ const useSessionClient = () => {
 
     const metadata = textOnly({
       content: content,
-      tags: ["answer", "lens-task-test-v2"],
+      tags: ["answer", "lens-task-test-v3"],
 
     });
 

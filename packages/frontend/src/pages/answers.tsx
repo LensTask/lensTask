@@ -63,9 +63,9 @@ const MyAnswers: NextPage = () => {
           filter: {
             metadata: {
               tags: {
-                all: ["lens-task-test-v2", "answer"] // Or use 'all'
+                all: ["lens-task-test-v3", "answer"] // Or use 'all'
               }
-            },
+            },  
             authors: [evmAddress(state.stateActiveLensProfile.address)],
           }
         });
@@ -109,10 +109,10 @@ const MyAnswers: NextPage = () => {
         <div className="flex justify-between items-center mb-8">
           <div className="text-center flex-grow">
             <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white sm:text-5xl tracking-tight">
-              Your Tasks
+              Your Answered Tasks
             </h1>
             <p className="mt-3 text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
-              Explore questions done by you.
+              Explore questions responded by you.
             </p>
           </div>
           {/* ACTION: Update this link to your page for asking LensTask questions */}
@@ -160,8 +160,8 @@ const MyAnswers: NextPage = () => {
           {!isLoading && !error && publications.length === 0 && (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <InformationCircleIcon className="h-16 w-16 mx-auto mb-3 opacity-30" />
-              <p className="text-lg font-medium">No LensTask Questions Found</p>
-              <p className="text-sm mt-1">Be the first to ask a verifiable question using the "Ask LensTask" button!</p>
+              <p className="text-lg font-medium">No LensTask Responses Found</p>
+              {/* <p className="text-sm mt-1">Be the first to ask a verifiable question using the "Ask LensTask" button!</p> */}
             </div>
           )}
           {!isLoading && !error && publications.length > 0 && (
