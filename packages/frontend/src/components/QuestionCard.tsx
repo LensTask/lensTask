@@ -43,7 +43,7 @@ export interface KintaskPublication {
     mirrors?: number;
     quotes?: number;
   } | null;
-  createdAt: string;
+  timestamp: string;
   app?: { appId?: string } | null;
 }
 
@@ -167,7 +167,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub, isAccepted = false }) 
               <a className="font-medium hover:underline">{displayHandle}</a>
             </Link>{' '}
             on{' '}
-            {new Date(pub.createdAt).toLocaleString('en-US', {
+            {new Date(pub.timestamp).toLocaleString('en-US', {
               year: 'numeric',
               month: 'short',
               day: 'numeric',
