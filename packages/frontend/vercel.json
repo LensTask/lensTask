@@ -1,0 +1,5 @@
+{
+    "buildCommand": "NEXT_TELEMETRY_DISABLED=1 TSC_COMPILE_ON_ERROR=true CI=false next build",
+    "installCommand": "pnpm install --registry=https://registry.npmjs.org/", 
+    "framework": "nextjs"
+  }

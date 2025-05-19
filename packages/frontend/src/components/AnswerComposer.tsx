@@ -44,8 +44,12 @@ export default function AnswerComposer({
       state.stateSessionClient
     );
 
-    const txOrId = commentResult?.value?.hash;
-    const simulatedSuccess = Boolean(txOrId);
+    let txOrId: string | undefined = undefined;
+    let simulatedSuccess = false;
+    if (commentResult && typeof commentResult.isOk === 'function' && commentResult.isOk()) {
+      txOrId = commentResult.value?.hash;
+      simulatedSuccess = Boolean(txOrId);
+    }
 
     const submittedText = text;       // capture before clearing
     if (simulatedSuccess && txOrId) {

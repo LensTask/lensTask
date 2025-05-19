@@ -7,7 +7,20 @@ import React,{ useState,useMemo,useContext } from 'react'
  * Our custom React hook to manage state
  */
 
- const AppContext = React.createContext({})
+type AppStateType = {
+  stateSessionClient: any;
+  stateActiveLensProfile: any;
+  isLoadingSession: any;
+};
+
+type AppActionsType = ReturnType<typeof getActions>;
+
+type AppContextType = {
+  state: AppStateType;
+  actions: AppActionsType;
+};
+
+const AppContext = React.createContext<AppContextType | undefined>(undefined);
 
 
 
@@ -45,7 +58,11 @@ const getActions = (setState) => ({
 
 
 const useAppContext = () => {
-  return useContext(AppContext)
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useAppContext must be used within an AppContext.Provider');
+  }
+  return context;
 }
 
 export { AppContext, useAppState, useAppContext }
