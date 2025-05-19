@@ -8,9 +8,9 @@ import { getDefaultConfig } from "connectkit";
 // Determine which Lens chain to use as primary based on NODE_ENV
 // chains.testnet from @lens-chain/sdk is Lens Chain Sepolia (37111)
 // chains.mainnet from @lens-chain/sdk is Lens Chain Mainnet (232)
-export const activeChainForApp = process.env.NODE_ENV === 'development'
-  ? lensSDKChainsFromLensChainSDK.testnet
-  : lensSDKChainsFromLensChainSDK.mainnet;
+export const activeChainForApp =  lensSDKChainsFromLensChainSDK.mainnet;
+  // ? lensSDKChainsFromLensChainSDK.testnet
+  // : lensSDKChainsFromLensChainSDK.mainnet;
 
   // Other chains you might want to support in ConnectKit modal for switching
 const otherSupportedChainsForApp = process.env.NODE_ENV === 'development'

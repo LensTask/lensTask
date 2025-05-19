@@ -45,7 +45,6 @@ const useSessionClient = () => {
   const error = (...args: any[]) => console.error('[useSessionClient]', ...args);
 
   const checkCurrentLensSession = async () => {
-
     if (!address) {
       log('Wallet not connected, clearing session state.');
       setActiveLensProfile(null);
@@ -53,73 +52,74 @@ const useSessionClient = () => {
       setIsCheckingLensSession(false);
       return;
     }
-
+  
     log('Starting session check for address:', address);
     setIsCheckingLensSession(true);
-    setFeedback('checking Lens status...(Check pending signatures)');
-
+    setFeedback('checking Lens status…');
+  
     try {
-
-
-      // Attempt to resume previous session
-      //const resumed = await client.resumeSession();
-      //log('resumeSession result:', resumed);
-
-      let currentClient;
+      let currentClient: SessionClient | null = null;
+  
+      // 1️⃣ Try to resume an existing session
       const resumed = await client.resumeSession();
-      if (resumed.isErr()) {
-        return console.error(resumed.error);
+      if (resumed.isOk()) {
+        currentClient = resumed.value;
+        log('Resumed existing session.');
+      } else {
+        console.warn('No saved session to resume:', resumed.error.name);
       }
-
-      // SessionClient: { ... }
-
-      currentClient = resumed.value;
-      const resumedSessionDetails = await currentSession(currentClient);
-      if (resumedSessionDetails.value.signer.toLowerCase() !== address.toLowerCase()) {
-        console.warn("Loging out from previous session")
-        await currentClient.logout();
-        currentClient = null;
+  
+      // 2️⃣ If we have a resumed client, verify the signer still matches
+      if (currentClient) {
+        const details = await currentSession(currentClient);
+        if (
+          details.isErr() ||
+          details.value.signer.toLowerCase() !== address.toLowerCase()
+        ) {
+          log('Resumed session signer mismatch, logging out.');
+          await currentClient.logout();
+          currentClient = null;
+        }
       }
-      console.warn("Making session")
+  
+      // 3️⃣ If no resumed client, do a fresh login
       if (!currentClient) {
+        log('Logging in to Lens…');
         const loginResult = await client.login({
           onboardingUser: { wallet: address as `0x${string}` },
           signMessage: async (message: string) => {
-            log('Signing Lens challenge message...');
+            log('Signing Lens challenge message…');
             return signMessageAsync({ message });
           },
         });
         if (loginResult.isErr()) {
           error('Login failed:', loginResult.error.message);
           setFeedback(`Login error: ${loginResult.error.message}`);
-          setIsCheckingLensSession(false);
           return;
         }
         currentClient = loginResult.value;
+        log('Obtained new session client.');
       }
-
-      log('Login succeeded, obtained new session client.');
+  
+      // 4️⃣ Store the client in state
       setSessionClient(currentClient);
-      // Fetch existing Lens accounts for this wallet
-      const result = await fetchAccountsAvailable(currentClient, {
+  
+      // 5️⃣ Fetch existing Lens profiles for this wallet
+      const accountsResult = await fetchAccountsAvailable(currentClient, {
         managedBy: evmAddress(address as `0x${string}`),
         includeOwned: true,
       });
-      if (result.isErr()) {
-        error('Error fetching available accounts:', result.error);
-        setFeedback('Error retrieving Lens accounts.');
-        setIsCheckingLensSession(false);
-        return;
+      if (accountsResult.isErr()) {
+        throw accountsResult.error;
       }
-      log('fetchAccountsAvailable returned:', result.value);
-
-      const savedAccount = result.value.items[0]?.account;
+  
+      const savedAccount = accountsResult.value.items[0]?.account;
       if (!savedAccount) {
         log('No Lens profiles found for this wallet.');
         setActiveLensProfile(null);
         setFeedback('You need to create a Lens profile!');
-      }
-      if (savedAccount) {
+      } else {
+        // switch to the first available account
         currentClient.switchAccount({ account: savedAccount.address });
         if (!savedAccount.username) {
           log('Found account without username, prompting for profile creation.');
@@ -130,12 +130,9 @@ const useSessionClient = () => {
           setFeedback(`✅ Welcome back, @${savedAccount.username.localName}!`);
           log('Active profile set to:', savedAccount.username.localName);
         }
-      } else {
-        setActiveLensProfile(null);
-        setFeedback('No Lens profile found. Please create one.');
       }
     } catch (err: any) {
-      warn('Error during session check:', err.message);
+      warn('Error during session check:', err.message || err);
       setActiveLensProfile(null);
       setFeedback('Could not determine Lens session status.');
     } finally {
@@ -143,7 +140,7 @@ const useSessionClient = () => {
       log('Session check complete.');
     }
   };
-
+  
   const handleProfileCreation = async (sessionClient, usernameSignUp) => {
 
 

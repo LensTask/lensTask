@@ -1,5 +1,5 @@
 // src/lib/client.ts
-import { PublicClient, testnet } from "@lens-protocol/client";
+import { PublicClient, testnet, mainnet } from "@lens-protocol/client";
 import { fragments }              from "./fragments";
 
 // 1) Build a simple LocalStorage-backed provider
@@ -11,7 +11,7 @@ const localStorageProvider = {
 
 // 2) Create your client, including all required config fields:
 export const client = PublicClient.create({
-  environment: testnet,         // ← required
+  environment: mainnet,         // ← required
   fragments,                    // ← your generated GraphQL fragments
   storage: localStorageProvider // ← now persists credentials across reloads
 });
