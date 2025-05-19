@@ -17,6 +17,10 @@ import {
 } from '@heroicons/react/24/outline'; // Or /24/solid if you prefer
 
 import iconFig from '../imgs/raw.jpeg';
+import lensFig from '../imgs/lens.jpeg';
+import aiFig from '../imgs/ai.jpeg';
+import rewardsFig from '../imgs/rewards.jpeg';
+
 const LandingPage: NextPage = () => {
   return (
     <>
@@ -147,7 +151,7 @@ const LandingPage: NextPage = () => {
             </div>
             <div className="mt-10 text-center">
               {/* [Chic Image Placeholder: Person smiling at device notification, or stylized tokens/points graph.] */}
-              <img src="https://placehold.co/700x300/e0f2fe/0891b2?text=Rewards+Visualization" alt="Earning Rewards" className="rounded-lg shadow-xl mx-auto" />
+              <img src={rewardsFig.src} alt="Earning Rewards" className="rounded-lg shadow-xl mx-auto" />
             </div>
           </div>
         </section>
@@ -169,7 +173,7 @@ const LandingPage: NextPage = () => {
             </div>
             <div>
               {/* [Chic Image Placeholder: Prominent Lens Protocol logo, network/blockchain design.] */}
-              <img src="https://placehold.co/500x400/ccfbf1/047857?text=Lens+Protocol+Integration" alt="Lens Protocol" className="rounded-lg shadow-xl mx-auto" />
+              <img src={lensFig.src} alt="Lens Protocol" className="rounded-lg shadow-xl mx-auto" />
             </div>
           </div>
         </section>
@@ -188,7 +192,7 @@ const LandingPage: NextPage = () => {
             </div>
             <div className="md:order-1">
               {/* [Chic Image Placeholder: Human interacting/collaborating with a friendly AI bot.] */}
-              <img src="https://placehold.co/500x400/cffafe/0891b2?text=Human+AI+Collaboration" alt="AI Collaboration" className="rounded-lg shadow-xl mx-auto" />
+              <img src={aiFig.src} alt="AI Collaboration" className="rounded-lg shadow-xl mx-auto" />
             </div>
           </div>
         </section>
