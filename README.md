@@ -199,7 +199,6 @@ sequenceDiagram
     participant AcceptedAnswerNFT as AcceptedAnswerNFT.sol
     participant LensPost as Lens Post (Question/Task)
     participant LensComment as Lens Comment (Answer)
-    participant ReputationNFT as Reputation NFT
     
     %% --- Phase 1: Posting the Question/Task ---
     Asker->>+FrontendUI: 1. Creates Question/Task
@@ -226,8 +225,6 @@ sequenceDiagram
     LensSDK->>+BountyPostAction: 12. Triggers 'executePostAction(winnerAddress)' <br> (on the specific instance attached to the Post)
     Note over BountyPostAction, AcceptedAnswerNFT: On-Chain Transaction
     BountyPostAction->>+AcceptedAnswerNFT: 13. Calls 'mintAward(winnerAddress)'
-    AcceptedAnswerNFT-->>Answerer: 14. Mints new ReputationNFT to Answerer's wallet
-    Answerer->>ReputationNFT: Receives NFT
     AcceptedAnswerNFT-->>BountyPostAction: Mint successful
     BountyPostAction-->>LensSDK: Action executed successfully
     
