@@ -164,6 +164,10 @@ LensTask deeply integrates with Lens Protocol V3 functionalities:
 3.  After deployment, note the deployed addresses for `BountyPostAction.sol` and `AcceptedAnswerNFT.sol`.
 
 
+## Deployed contracts on mainnet
+https://explorer.lens.xyz/address/0xE5f5343E9afa04Ad62b006e109170113C1503649  --- BountPostAction.sol
+https://explorer.lens.xyz/address/0x3f9bE9Ab356070B43ea861A35673257873eC7Cab  --- AcceptedAnswerNFT.sol
+
 ### Frontend
 
 -   Deploy the Next.js application (in `packages/frontend`) to your preferred hosting provider (e.g., Vercel, Netlify). Ensure all `NEXT_PUBLIC_` environment variables are correctly set in the hosting provider's settings.
@@ -174,6 +178,11 @@ LensTask deeply integrates with Lens Protocol V3 functionalities:
 -   **Advanced Search & Filtering:** Improve discovery of questions, tasks, and experts.
 -   **Notifications:**
 -   **Refined AI Agent Integration:** Develop clear pathways and interfaces for AI agents to participate as first-class citizens in the task economy.
+
+
+### DEMO
+
+https://lenstask.vercel.app/
 
 
 ```mermaid
