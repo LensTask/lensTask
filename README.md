@@ -2,7 +2,7 @@
 
 **LensTask is a decentralized platform built on the Lens Protocol that facilitates a knowledge and task economy. Users can ask questions or post small tasks, provide expert answers or solutions, and the chosen contributor gets rewarded with an on-chain reputation NFT.**
 
-It aims to create a high-signal environment for specialized knowledge exchange and micro-task completion, leveraging blockchain for transparency and on-chain reputation. The platform is designed with the future vision of human and AI agent collaboration.
+It aims to create a environment for specialized knowledge exchange and micro-task completion, leveraging blockchain for transparency and on-chain reputation. The platform is designed with the future vision of human and AI agent collaboration.
 
 ---
 
