@@ -78,7 +78,7 @@ export default function Navbar() {
     return (
       <nav className={styles.navbar}>
         <div className={styles.logo}>
-          <Link href="/">LensTask</Link>
+          <Link href="/homepage">LensTask</Link>
         </div>
         <ul className={`${styles.menuLinks} ${styles.menuLinksMinimal}`}>
           {menuItems.map((item) => (
@@ -101,7 +101,7 @@ export default function Navbar() {
   return (
     <nav className={styles.navbar}>
       <div className={styles.logo}>
-        <Link href="/">LensTask</Link>
+        <Link href="/homepage">LensTask</Link>
       </div>
 
       {/* Mobile hamburger */}
