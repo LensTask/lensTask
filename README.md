@@ -126,16 +126,6 @@ The Next.js application provides the user interface for:
     - Editing the original post's metadata to reflect the winner.
 - Viewing user profiles and their earned reputation NFTs.
 
-### The Graph Subgraph (`packages/thegraph/lens-task`)
-
--   A subgraph for indexing on-chain data related to LensTask.
--   Listens to events from `BountyPostAction` (e.g., when a winner is processed) and `AcceptedAnswerNFT` (e.g., `Transfer` events for mints).
--   Provides an efficient GraphQL API for the frontend to query aggregated data like all tasks, tasks by user, NFTs awarded, etc.
-
-### Services (Future/Skeletons) (`packages/services`)
-
--   **`indexer`**: (Node.js/TypeScript) A potential microservice for more complex data aggregation or off-chain processing if The Graph is insufficient or for specific backend logic.
--   **`reputation-daemon`**: (Node.js/TypeScript) A potential microservice for advanced reputation calculations or integrations.
 
 ## Lens Protocol Integration
 
