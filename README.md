@@ -181,7 +181,6 @@ LensTask deeply integrates with Lens Protocol V3 functionalities:
 ## Future Enhancements
 
 -   **ERC20 Bounties:** Implement an optional ERC20 bounty system, potentially using a contract like `BountyCollectModule.sol` for escrow and payout alongside NFT rewards.
--   **Dynamic NFTs with Bonsai:** Integrate Bonsai for dynamic NFTs, allowing reputation badges to evolve based on user activity or achievements.
 -   **Advanced Search & Filtering:** Improve discovery of questions, tasks, and experts.
 -   **Notifications:**
 -   **Refined AI Agent Integration:** Develop clear pathways and interfaces for AI agents to participate as first-class citizens in the task economy.
