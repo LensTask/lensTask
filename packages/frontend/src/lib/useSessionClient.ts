@@ -238,91 +238,124 @@ const useSessionClient = () => {
     questionId: string,
     winnerAddress: string
   ) => {
-    setFeedback(null);
-    console.log('[useSessionClient] handleAssignResponseWinner triggered.');
-
+    setFeedback(null)
+    console.log('[useSessionClient] handleAssignResponseWinner triggered.')
+  
     if (!isConnected || !activeLensProfile) {
-      const msg = '⚠️ Please log in with an active Lens Profile first.';
-      setFeedback(msg);
-      console.warn(`[useSessionClient] ${msg}`);
-      return;
+      const msg = '⚠️ Please log in with an active Lens Profile first.'
+      setFeedback(msg)
+      console.warn(`[useSessionClient] ${msg}`)
+      return
     }
-
-    setFeedback('Preparing transaction…');
-    setIsPosting(true);
-    console.log('[useSessionClient] feedAddress:', feedAddress);
-    console.log('[useSessionClient] questionId:', questionId);
-    console.log('[useSessionClient] winnerAddress:', winnerAddress);
-
-    const coder = AbiCoder.defaultAbiCoder();
-
+  
+    setFeedback('Preparing transaction…')
+    setIsPosting(true)
+  
     try {
+      // ──────────────────────────────────────────────────────────────
+      // 1️⃣  Execute the on-chain "winner" action
+      // ──────────────────────────────────────────────────────────────
+      const coder = AbiCoder.defaultAbiCoder()
       const postExecuteAction = {
-        post: postId(questionId.toString()),  
+        post: postId(questionId),
         action: {
           unknown: {
             address: evmAddress(getPostActionAddress(chainId)),
             params: [
               {
-                // top-level key + data, no `raw` wrapper
-                key: blockchainData(keccak256(toUtf8Bytes("winner"))),
+                key: blockchainData(keccak256(toUtf8Bytes('winner'))),
                 data: blockchainData(
-                  coder.encode(["address"], [winnerAddress])
+                  coder.encode(['address'], [winnerAddress])
                 ),
               },
             ],
           },
         },
-      };
-      
-      const result = await executePostAction(sessionClient, postExecuteAction)
-      .andThen(handleOperationWith(walletClient));
-
-
-      if (result.isErr()) {
-        console.error(result.error);
-        setFeedback(`❌ Error assigning bounty: ${result.error.message}`);
-        return;
       }
-
-      const postResult = await fetchPost(client, { post: postId(questionId) });
-
-      if (postResult.isErr() || postResult.value === null) {
-        if (postResult.isErr()) {
-          console.error(postResult.error);
-          setFeedback(`❌ Error getting question meta data: ${postResult.error.message}`);
-        } else {
-          setFeedback(`❌ Error getting question meta data: Question post not found!`);
-        }
-        return;
+  
+      const assignResult = await executePostAction(sessionClient, postExecuteAction)
+        .andThen(handleOperationWith(walletClient))
+        .andThen(sessionClient.waitForTransaction)
+  
+      if (assignResult.isErr()) {
+        console.error(assignResult.error)
+        setFeedback(`❌ Error assigning bounty: ${assignResult.error.message}`)
+        return
       }
-
-      const postMeta = postResult.value.metadata;
-      postMeta.attributes.push({ key: 'winner', value: winnerAddress, type: MetadataAttributeType.STRING });
-      console.log('uploading new meta data', postMeta);
-      const { uri: uriResult } = await storageClient.uploadAsJson(postMeta);
-      console.log('uploaded new meta data', uriResult);
-
+  
+      // ──────────────────────────────────────────────────────────────
+      // 2️⃣  Fetch the original post metadata
+      // ──────────────────────────────────────────────────────────────
+      const postResult = await fetchPost(client, { post: postId(questionId) })
+      if (postResult.isErr() || !postResult.value) {
+        const errMsg = postResult.isErr()
+          ? postResult.error.message
+          : 'Question post not found!'
+        console.error(errMsg)
+        setFeedback(`❌ Error fetching post: ${errMsg}`)
+        return
+      }
+      const base = postResult.value.metadata
+  
+      // ──────────────────────────────────────────────────────────────
+      // 3️⃣  Build fresh LIP-2 metadata JSON with the new "winner" attribute
+      // ──────────────────────────────────────────────────────────────
+      const newMetadata = textOnly({
+        content: base.content,
+        locale: base.locale ?? 'en',
+        tags: base.tags ?? [],
+        attributes: [
+          ...(base.attributes ?? []),
+          {
+            key: 'winner',
+            value: winnerAddress,
+            type: MetadataAttributeType.STRING,
+          },
+        ],
+      })
+  
+      // ──────────────────────────────────────────────────────────────
+      // 4️⃣  Upload and get new content URI
+      // ──────────────────────────────────────────────────────────────
+      const { uri: newUri } = await storageClient.uploadAsJson(newMetadata)
+      if (!newUri) {
+        throw new Error('Failed to upload new metadata')
+      }
+      console.log('[useSessionClient] new metadata URI:', newUri)
+  
+      // ──────────────────────────────────────────────────────────────
+      // 5️⃣  Edit the post, sign and wait for confirmation
+      // ──────────────────────────────────────────────────────────────
       const editResult = await editPost(sessionClient, {
-        contentUri: uri(uriResult),
-        post: postId(questionId)
-      }).andThen(handleOperationWith(walletClient));
-
+        post: postId(questionId),
+        contentUri: uri(newUri),
+      })
+        .andThen(handleOperationWith(walletClient))
+        .andThen(sessionClient.waitForTransaction)
+  
       if (editResult.isErr()) {
-        console.error(editResult.error);
-        setFeedback(`❌ Error editing question meta data: ${editResult.error.message}`);
-        return;
+        console.error(editResult.error)
+        setFeedback(
+          `❌ Error editing post metadata: ${editResult.error.message}`
+        )
+        return
       }
-
-      console.log('✅ Bounty winner assigned:', result.value);
-      setFeedback('✅ Bounty winner assigned!');
+  
+      // ──────────────────────────────────────────────────────────────
+      // ✅ Done
+      // ──────────────────────────────────────────────────────────────
+      console.log(
+        '✅ Bounty winner assigned on-chain and persisted in metadata'
+      )
+      setFeedback('✅ Bounty winner successfully saved!')
     } catch (err: any) {
-      console.error(err);
-      setFeedback(`❌ Unexpected error: ${err.message || err}`);
+      console.error(err)
+      setFeedback(`❌ Unexpected error: ${err.message || err}`)
     } finally {
-      setIsPosting(false);
+      setIsPosting(false)
     }
-  };
+  }
+  
 
   const handlePost = async (content, sessionClient, activeLensProfile) => {
     setFeedback(null); // Clear previous feedback

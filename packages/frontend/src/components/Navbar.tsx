@@ -14,6 +14,8 @@ const menuItems = [
   { label: 'Home', href: '/' },
   { label: 'Create Task', href: '/ask' },
   { label: 'My Tasks', href: '/questions' },
+  { label: 'My Answers', href: '/answers' },
+
 ];
 
 export default function Navbar() {

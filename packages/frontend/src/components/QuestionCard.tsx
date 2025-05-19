@@ -1,55 +1,50 @@
 // src/components/QuestionCard.tsx
-
 import Link from 'next/link';
 import { ChatBubbleOvalLeftEllipsisIcon, ArrowUpCircleIcon } from '@heroicons/react/24/outline';
 
 // Define a type that closely matches the example publication structure you provided
 // This helps with type safety within this component.
-interface KintaskPublication {
+export interface KintaskPublication {
   id: string;
-  __typename: 'Post' | 'Comment' | 'Mirror' | 'Quote' | string; // Allow other typenames
+  __typename: 'Post' | 'Comment' | 'Mirror' | 'Quote' | string;
   author: {
     __typename: 'Account';
     address: string;
-    username?: { // Username might be optional
+    username?: {
       __typename: 'Username';
-      fullHandle: string; // e.g., "lens/stani" or "test/dave"
+      fullHandle: string;
       localName: string;
       namespace: string;
     } | null;
-    metadata?: { // Profile metadata for picture
+    metadata?: {
       __typename: 'ProfileMetadata';
       picture?: {
-        __typename: 'ImageSet'; // Assuming ImageSet for profile pictures based on typical Lens structure
+        __typename: 'ImageSet';
         optimized?: { uri: string } | null;
-        raw?: { uri: string } | null; // Or 'original' if that's the field name
+        raw?: { uri: string } | null;
       } | null;
     } | null;
   };
   metadata?: {
-    __typename: 'ArticleMetadata' | 'TextOnlyMetadataV3' | string; // Add other expected metadata types
+    __typename: 'ArticleMetadata' | 'TextOnlyMetadataV3' | string;
     id?: string;
     title?: string | null;
-    content?: string | null; // Common field for text
-    tags?: string[] | null; // Common for tags
-    // Add other metadata fields as needed, e.g., for images, videos
-    attributes?: Array<{ traitType?: string | null, value?: string | null }> | null;
-    attachments?: Array<any> | null; // For media attachments
+    content?: string | null;
+    tags?: string[] | null;
+    attributes?: Array<{ traitType?: string | null; value?: string | null }> | null;
+    attachments?: Array<any> | null;
     contentWarning?: string | null;
   } | null;
   stats?: {
-    __typename: 'PostStats' | string; // Or 'PublicationStats'
+    __typename: 'PostStats' | string;
     comments: number;
     collects: number;
-    upvotes?: number; // If upvotes are a direct stat
+    upvotes?: number;
     mirrors?: number;
     quotes?: number;
-    // Add other stats if available, e.g., reactions or a specific "answers" count
-    // If using a custom stat for "answers", ensure your backend/indexing provides it
   } | null;
-  createdAt: string; // Timestamp string
-  // Add any other fields your card needs from the publication object
-  app?: { appId?: string } | null; // Example if you filter by appId
+  createdAt: string;
+  app?: { appId?: string } | null;
 }
 
 // Helper to get a displayable image URL
@@ -58,22 +53,27 @@ const getProfilePictureUrl = (author: KintaskPublication['author']): string => {
   if (pictureSet) {
     return pictureSet.optimized?.uri || pictureSet.raw?.uri || '/default-avatar.png';
   }
-  return '/default-avatar.png'; // Fallback placeholder
+  return '/default-avatar.png';
 };
 
 // Helper to get a displayable handle
 const getDisplayHandle = (author: KintaskPublication['author']): string => {
-  return author.username?.localName || `Account: ${author.address.substring(0, 6)}...${author.address.substring(author.address.length - 4)}`;
-}
+  return (
+    author.username?.localName ||
+    `Account: ${author.address.substring(0, 6)}...${author.address.substring(
+      author.address.length - 4
+    )}`
+  );
+};
 
 interface QuestionCardProps {
-  pub: KintaskPublication; // Use the defined interface
+  pub: KintaskPublication;
+  isAccepted?: boolean;
 }
 
-const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
+const QuestionCard: React.FC<QuestionCardProps> = ({ pub, isAccepted = false }) => {
   // Ensure we only try to render Post-like structures that have an author and metadata
   if (!pub.author || !pub.metadata || (pub.__typename !== 'Post' && pub.__typename !== 'Comment')) {
-    // console.warn("QuestionCard: Skipping rendering for unsupported publication type or missing data", pub.__typename);
     return null;
   }
 
@@ -85,57 +85,63 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
   const displayHandle = getDisplayHandle(profile);
 
   // Extract title and content based on metadata type
-  let title = "Untitled Question";
-  let contentSnippet = metadata?.content || "No content preview available."; // Default to content
+  let title = 'Untitled Question';
+  let contentSnippet = metadata?.content || 'No content preview available.';
 
-
-  let questionTitle = "test";
+  let questionTitle = 'test';
   try {
     questionTitle = JSON.parse(metadata?.content!).title;
-  }
-  catch {
-    questionTitle = "test";
+  } catch {
+    questionTitle = 'test';
   }
 
-  // More robust metadata handling based on __typename
   if (metadata) {
     switch (metadata.__typename) {
-      case 'ArticleMetadataV3': // Assuming V3 metadata if __typename ends with V3
+      case 'ArticleMetadataV3':
       case 'ArticleMetadata':
-        title = questionTitle || (metadata.content ? (metadata.content.substring(0, 70) + (metadata.content.length > 70 ? "..." : "")) : "Untitled Article");
-        contentSnippet = metadata.content || "No content available.";
+        title =
+          questionTitle ||
+          (metadata.content
+            ? metadata.content.substring(0, 70) + (metadata.content.length > 70 ? '...' : '')
+            : 'Untitled Article');
+        contentSnippet = metadata.content || 'No content available.';
         break;
       case 'TextOnlyMetadataV3':
       case 'TextOnlyMetadata':
-        // For TextOnly, content is the main field.
-        title = questionTitle == "test" ? (metadata.content.substring(0, 70) + (metadata.content.length > 70 ? "..." : "")) : questionTitle;
-        // contentSnippet = metadata.content || "No content available.";
+        title =
+          questionTitle === 'test'
+            ? metadata.content.substring(0, 70) +
+              (metadata.content.length > 70 ? '...' : '')
+            : questionTitle;
         break;
-      // Add cases for other metadata types you expect (Image, Video, etc.)
-      // case 'ImageMetadataV3':
-      //   title = metadata.title || "Image Post";
-      //   contentSnippet = metadata.description || "No description.";
-      //   break;
       default:
-        // Fallback if metadata type is unknown or not handled
-        title = metadata.content ? (metadata.content.substring(0, 70) + (metadata.content.length > 70 ? "..." : "")) : (metadata.title || "Lens Publication");
-        // contentSnippet = metadata.content || "Content not directly extractable for this metadata type.";
+        title =
+          metadata.content
+            ? metadata.content.substring(0, 70) + (metadata.content.length > 70 ? '...' : '')
+            : metadata.title || 'Lens Publication';
         break;
     }
   }
-  // Ensure title is not overly long for display
-  if (title.length > 70) title = title.substring(0, 67) + "...";
-  if (contentSnippet.length > 150) contentSnippet = contentSnippet.substring(0, 147) + "...";
 
+  if (title.length > 70) title = title.substring(0, 67) + '...';
+  if (contentSnippet.length > 150) contentSnippet = contentSnippet.substring(0, 147) + '...';
 
-  const tags = metadata?.tags || [];
-
-  // Determine the link to the full question/post detail page
-  // ACTION: Update this href to your actual question detail page route
-  const questionDetailUrl = `/question/${pub.id}`; // Example: `/question/${pub.id}`
+  const questionDetailUrl = `/question/${pub.id}`;
 
   return (
-    <div className="bg-white dark:bg-slate-800 shadow-lg rounded-xl p-5 sm:p-6 hover:shadow-2xl transition-shadow duration-300 border border-gray-200 dark:border-gray-700">
+    <div
+      className={`
+        bg-white dark:bg-slate-800 shadow-lg rounded-xl p-5 sm:p-6 hover:shadow-2xl transition-shadow duration-300
+        border border-gray-200 dark:border-gray-700
+        ${isAccepted ? 'border-green-500 bg-green-50 dark:bg-green-900/30' : ''}
+      `}
+    >
+      {isAccepted && (
+        <span className="inline-block mb-2 px-2 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded">
+          Accepted Answer 🎉
+        </span>
+      )}
+
       <div className="flex items-start space-x-3 sm:space-x-4 mb-4">
         <Link href={`/profile/lens/${displayHandle.replace('/', ':')}`} legacyBehavior>
           <a className="flex-shrink-0">
@@ -146,9 +152,12 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
             />
           </a>
         </Link>
-        <div className="flex-1 min-w-0"> {/* Added min-w-0 for proper text truncation */}
+        <div className="flex-1 min-w-0">
           <Link href={questionDetailUrl} legacyBehavior>
-            <a className="block text-base sm:text-lg font-semibold text-sky-600 dark:text-sky-400 hover:underline truncate" title={title}>
+            <a
+              className="block text-base sm:text-lg font-semibold text-sky-600 dark:text-sky-400 hover:underline truncate"
+              title={title}
+            >
               {title}
             </a>
           </Link>
@@ -156,39 +165,29 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ pub }) => {
             Asked by{' '}
             <Link href={`/profile/lens/${displayHandle.replace('/', ':')}`} legacyBehavior>
               <a className="font-medium hover:underline">{displayHandle}</a>
-            </Link>
-            {' on '}
-            {new Date(pub.timestamp).toLocaleString('en-US', {
+            </Link>{' '}
+            on{' '}
+            {new Date(pub.createdAt).toLocaleString('en-US', {
               year: 'numeric',
               month: 'short',
               day: 'numeric',
               hour: '2-digit',
-              minute: '2-digit'
+              minute: '2-digit',
             })}
           </p>
         </div>
       </div>
 
-      {/* Optional: Display a short snippet of the content if it's different from the title and not too long */}
-      {/* This can be useful if your 'title' is just a short part of the actual question */}
-      {/* {contentSnippet && contentSnippet !== title && (
-        <p className="text-sm text-slate-700 dark:text-slate-300 mb-4 leading-relaxed max-h-20 overflow-hidden relative group">
-          {contentSnippet}
-          {contentSnippet.length >= 147 && <span className="absolute bottom-0 right-0 bg-gradient-to-l from-white dark:from-slate-800 via-white/80 dark:via-slate-800/80 to-transparent w-1/3 h-full group-hover:hidden"></span>}
-        </p>
-      )} */}
-
-
-
       <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-3 mt-auto">
         <div className="flex items-center space-x-3 sm:space-x-4">
           <span className="flex items-center" title="Upvotes/Reactions">
-            <ArrowUpCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 text-green-500" /> {stats?.upvotes || stats?.collects || 0} {/* Prefer upvotes, fallback to collects */}
+            <ArrowUpCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 text-green-500" />{' '}
+            {stats?.upvotes || stats?.collects || 0}
           </span>
           <span className="flex items-center" title="Comments/Answers">
-            <ChatBubbleOvalLeftEllipsisIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 text-blue-500" /> {stats?.comments || 0}
+            <ChatBubbleOvalLeftEllipsisIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 text-blue-500" />{' '}
+            {stats?.comments || 0}
           </span>
-          {/* Add other stats like Mirrors or Quotes if desired */}
         </div>
         <Link href={questionDetailUrl} legacyBehavior>
           <a className="text-kintask-blue dark:text-sky-400 hover:underline font-medium text-xs sm:text-sm">
