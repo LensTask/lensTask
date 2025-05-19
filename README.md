@@ -69,35 +69,35 @@ The platform can be used for both detailed questions requiring expert knowledge 
 ### Installation
 
 1.  **Clone the repository:**
-    \`\`\`bash
+    ```
     git clone <your-repo-url> # Replace <your-repo-url> with your repository's URL
     cd lens-task
-    \`\`\`
+    ```
 2.  **Install dependencies from the root:**
-    \`\`\`bash
+    ```
     pnpm install
-    \`\`\`
+    ```
 
 ### Running Locally
 
 1.  **Local Hardhat Node (for contract development/testing):**
     *   Terminal 1: Start a local Hardhat node:
-        \`\`\`bash
+        ```
         pnpm --filter contracts dev:node # Or your script for this
-        \`\`\`
+        ```
     *   Terminal 2: Deploy contracts to the local node:
-        \`\`\`bash
+        ```
         pnpm --filter contracts dev:deploy-local # Or your script for this
-        \`\`\`
-        *(Note: Update frontend constants or env vars if testing frontend against these locally deployed contracts).*
+        ```
+  
 
 2.  **Frontend against Lens Sepolia Testnet (Recommended for V3 testing):**
     *   Ensure contracts are deployed to Lens Sepolia Testnet (see "Deployment to Testnet").
     *   Ensure relevant `NEXT_PUBLIC_..._TESTNET` variables are set in `.env`.
     *   Start the frontend:
-        \`\`\`bash
+        ```
         pnpm --filter frontend dev # Or your script, e.g., pnpm run dev:frontend
-        \`\`\`
+        ```
     *   Open `http://localhost:3000` in your browser.
 
 ## Key Components
@@ -183,10 +183,8 @@ LensTask deeply integrates with Lens Protocol V3 functionalities:
 -   **ERC20 Bounties:** Implement an optional ERC20 bounty system, potentially using a contract like `BountyCollectModule.sol` for escrow and payout alongside NFT rewards.
 -   **Dynamic NFTs with Bonsai:** Integrate Bonsai for dynamic NFTs, allowing reputation badges to evolve based on user activity or achievements.
 -   **Advanced Search & Filtering:** Improve discovery of questions, tasks, and experts.
--   **Notifications:** Implement in-app and potentially decentralized notifications (e.g., via XMTP or Lens Notifications).
--   **Token-Gated Communication:**
+-   **Notifications:**
 -   **Refined AI Agent Integration:** Develop clear pathways and interfaces for AI agents to participate as first-class citizens in the task economy.
--   **Enhanced Indexer Service:** Develop the `packages/services/indexer` for more sophisticated off-chain data processing and caching beyond The Graph's scope if needed.
 
 
 ```mermaid
