@@ -149,17 +149,17 @@ LensTask deeply integrates with Lens Protocol V3 functionalities:
 
 ### Contracts
 
-1.  Ensure your `packages/contracts/.env` file is correctly configured with the target network's RPC URL (e.g., `LENS_TESTNET_RPC_URL` or `LENS_MAINNET_RPC_URL`) and your funded `PRIVATE_KEY`.
+1.  Ensure your `packages/contracts/.env` file is correctly configured `PRIVATE_KEY`.
 2.  Run the deployment script (e.g., from `packages/contracts/scripts/deploy.ts` via Hardhat task):
     For Lens Sepolia Testnet:
     ```
     pnpm --filter contracts deploy:lensSepolia 
-    # Example: npx hardhat run scripts/deploy.ts --network lensSepolia (if run from packages/contracts)
+    # Example: pnpm run deploy --network testnet (if run from packages/contracts)
     ```
     For Lens Mainnet:
     ```
     pnpm --filter contracts deploy:lensMainnet
-    # Example: npx hardhat run scripts/deploy.ts --network lensMainnet (if run from packages/contracts)
+    # Example:pnpm run deploy --network mainnet (if run from packages/contracts)
     ```
 3.  After deployment, note the deployed addresses for `BountyPostAction.sol` and `AcceptedAnswerNFT.sol`.
 
